@@ -9,6 +9,7 @@
             height: 100%;
         }
     </style>
+    <link rel="icon" href="lilsharky.png">
     <title>iGame</title>
 </head>
 <body>
@@ -16,7 +17,11 @@
     <span>Score: <span id="scoreEl">0</span></span>
 </div>
 <canvas></canvas>
-
+<script>
+    const queryString = window.location.search;
+    const urlParams = new URLSearchParams(queryString);
+    const ign = urlParams.get("name")
+</script>
 <script
         src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.10.2/gsap.min.js"
         integrity="sha512-kVlGhj2qFy+KBCFuvjBJTGUMxbdqJKs4yK2jh0e0VPhWUPiPC87bzm4THmaaIee3Oj7j6sDpTTgm2EPPiESqBg=="

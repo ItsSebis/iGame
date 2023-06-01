@@ -28,6 +28,7 @@ io.on('connection', (socket) => {
     }
 
     socket.on('movement', (movement) => {
+        players[socket.id].name = movement.name
         if (movement.left ^ movement.right) {
             if (movement.left) {
                 if (players[socket.id].x + (-1*speed) - 20 > 0) {

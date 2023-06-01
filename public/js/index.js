@@ -50,6 +50,7 @@ socket.on('updatePlayers', (backendPlayers) => {
 
 socket.on('updateCords', (bCords) => {
     for (const id in players) {
+        players[id].name = bCords[id].name
         players[id].x = bCords[id].x
         players[id].y = bCords[id].y
     }
@@ -73,6 +74,7 @@ function animate() {
     }
 
     const movement = {
+        name: ign,
         left: aPressed,
         right: dPressed,
         up: wPressed,
