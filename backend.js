@@ -1,6 +1,8 @@
 #!/usr/bin/env node
+const start = Date.now();
 const express = require('express')
 const backend = express()
+const port = 6969
 
 // socket.io setup
 const http = require('http')
@@ -8,50 +10,52 @@ const server = http.createServer(backend)
 const { Server } = require('socket.io')
 const io = new Server(server, {pingInterval: 500, pingTimeout: 1000})
 
-const port = 6969
-
 backend.use(express.static('./public'))
 
 backend.get('/', (req, res) => {
     res.sendFile(__dirname + '/public/index.html')
 })
 
-let speed = 2
+let speed = 5
+const map = {
+    height: 1000,
+    width: 1000
+}
 const players = {}
 
 io.on('connection', (socket) => {
     console.log("A user connected")
     players[socket.id] = {
-        x: 1920 * Math.random(),
-        y: 1010 * Math.random(),
-        name: socket.id
+        x: 500,
+        y: 500,
+        vel: {
+            x: 0,
+            y: 0
+        },
+        name: null
     }
 
     socket.on('movement', (movement) => {
         players[socket.id].name = movement.name
         if (movement.left ^ movement.right) {
             if (movement.left) {
-                if (players[socket.id].x + (-1*speed) - 20 > 0) {
-                    players[socket.id].x += -1 * speed
-                }
+                players[socket.id].vel.x = -1*speed
             } else {
-                if (players[socket.id].x + speed + 20 < 1920) {
-                    players[socket.id].x += speed
-                }
+                players[socket.id].vel.x = speed
             }
+        } else {
+            players[socket.id].vel.x = 0
         }
         if (movement.up ^ movement.down) {
             if (movement.up) {
-                if (players[socket.id].y + (-1*speed) - 20 > 0) {
-                    players[socket.id].y += -1*speed
-                }
+                players[socket.id].vel.y = -1*speed
             } else {
-                if (players[socket.id].y + speed + 20 < 1010) {
-                    players[socket.id].y += speed
-                }
+                players[socket.id].vel.y = speed
             }
+        } else {
+            players[socket.id].vel.y = 0
         }
-        io.emit('updateCords', players)
+        socket.emit('updateCords', players)
     })
 
     io.emit('updatePlayers', players)
@@ -64,6 +68,23 @@ io.on('connection', (socket) => {
 
     console.log(players)
 })
+
+async function update() {
+    for (const id in players) {
+        const player = players[id]
+        if (players[id].x + players[id].vel.x + 20 < map.width && players[id].x + players[id].vel.x - 20 > 0) {
+            players[id].x = players[id].x + players[id].vel.x
+        }
+        if (players[id].y + players[id].vel.y + 20 < map.height && players[id].y + players[id].vel.y - 20 > 0) {
+            players[id].y = players[id].y + players[id].vel.y
+        }
+    }
+    io.emit('updateCords', players)
+    setTimeout(function () {
+        update()
+    }, 20)
+}
+update()
 
 server.listen(port, () => {
     console.log(`App listening on port ${port}`)
