@@ -81,14 +81,14 @@ function animate() {
     c.fillStyle = 'rgba(0, 0, 0, 1)'
     c.fillRect(0, 0, 6000, 6000)
     c.strokeStyle = 'rgb(30, 30, 30)'
-    for (let i = cam.y; i < canvas.width; i+=50*devicePxRat) {
-        c.moveTo(i, cam.y)
-        c.lineTo(i, canvas.height)
+    for (let i = 0; i < 2050; i+=50*devicePxRat) {
+        c.moveTo(i-cam.x, 0-cam.y)
+        c.lineTo(i-cam.x, 2000-cam.y)
         c.stroke()
     }
-    for (let i = cam.x; i < canvas.height; i+=50*devicePxRat) {
-        c.moveTo(cam.x, i)
-        c.lineTo(canvas.width, i)
+    for (let i = 0; i < 2050; i+=50*devicePxRat) {
+        c.moveTo(0-cam.x, i-cam.y)
+        c.lineTo(2000-cam.x, i-cam.y)
         c.stroke()
     }
 
