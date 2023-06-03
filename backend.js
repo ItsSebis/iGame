@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-const start = Date.now();
 let lastUpdateTime = 0
 
 const express = require('express')
@@ -21,7 +20,7 @@ backend.get('/', (req, res) => {
 let speed = 4
 const map = {
     height: 2000,
-    width: 2000
+    width: 3000
 }
 const players = {}
 const names = [

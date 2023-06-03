@@ -3,6 +3,8 @@ const c = canvas.getContext('2d')
 
 const socket = io();
 
+const fpsEl = document.querySelector('#fpsEl')
+let recentFPS = []
 const tpsEl = document.querySelector('#tpsEl')
 let recentTPS = []
 
@@ -27,6 +29,7 @@ let cam = {
 }
 let ego = undefined
 const players = {}
+let lastUpdateTime = 0
 
 function avg(array) {
     let sum = 0;
@@ -79,16 +82,16 @@ let animationId
 function animate() {
     animationId = requestAnimationFrame(animate)
     c.fillStyle = 'rgba(0, 0, 0, 1)'
-    c.fillRect(0, 0, 6000, 6000)
+    c.fillRect(0, 0, 3000, 2000)
     c.strokeStyle = 'rgb(30, 30, 30)'
-    for (let i = 0; i < 2050; i+=50*devicePxRat) {
+    for (let i = 0; i < 3050; i+=50) {
         c.moveTo(i-cam.x, 0-cam.y)
         c.lineTo(i-cam.x, 2000-cam.y)
         c.stroke()
     }
-    for (let i = 0; i < 2050; i+=50*devicePxRat) {
+    for (let i = 0; i < 2050; i+=50) {
         c.moveTo(0-cam.x, i-cam.y)
-        c.lineTo(2000-cam.x, i-cam.y)
+        c.lineTo(3000-cam.x, i-cam.y)
         c.stroke()
     }
 
@@ -111,15 +114,23 @@ function animate() {
         const p = players[id]
         p.draw()
     }
+
+    const end = Date.now();
+    recentFPS.push(Math.round(1000 / (end - lastUpdateTime)))
+    lastUpdateTime = end
 }
 
 async function updateTPS() {
-    const avgTps = avg(recentTPS);
-    tpsEl.innerText = Math.round((1000/avgTps + Number.EPSILON) * 100) / 100
+    // FPS
+    fpsEl.innerText = Math.round((avg(recentFPS) + Number.EPSILON) * 100) / 100
+    recentFPS = []
+
+    // TPS
+    tpsEl.innerText = Math.round((1000/avg(recentTPS) + Number.EPSILON) * 100) / 100
     recentTPS = []
     setTimeout(function () {
         updateTPS()
-    }, 250)
+    }, 100)
 }
 
 updateTPS().then()

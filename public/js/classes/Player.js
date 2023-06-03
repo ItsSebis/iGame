@@ -1,5 +1,5 @@
 class Player {
-    constructor({x, y, color, name, velocity={x:0,y:0}}) {
+    constructor({x, y, color, name}) {
         this.x = x
         this.y = y
         this.radius = 20 * window.devicePixelRatio
