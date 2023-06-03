@@ -1,17 +1,23 @@
+// initialize canvas
 const canvas = document.querySelector('canvas')
 const c = canvas.getContext('2d')
 
+// socket.io connection
 const socket = io();
 
+// client fps and server tps stat elements
 const fpsEl = document.querySelector('#fpsEl')
+let lastUpdateTime = 0
 let recentFPS = []
 const tpsEl = document.querySelector('#tpsEl')
 let recentTPS = []
 
+// device pixel ration -> more pixel, more sight, no no
 const devicePxRat = window.devicePixelRatio || 1
-
 canvas.width = innerWidth * devicePxRat
 canvas.height = innerHeight * devicePxRat
+
+// coordinates shown
 const xEl = document.querySelector('#xEl')
 const yEl = document.querySelector('#yEl')
 const xCEl = document.querySelector('#xCEl')
@@ -23,14 +29,24 @@ let dPressed = false
 let wPressed = false
 let sPressed = false
 
+// map size
+const map = {
+    height: 2000,
+    width: 3000
+}
+// cam position (top left corner of screen)
 let cam = {
     x: 0,
     y: 0
 }
+// id of this client
 let ego = undefined
-const players = {}
-let lastUpdateTime = 0
 
+// frontend player and projectile variable
+const players = {}
+const projectiles = {}
+
+// helper function for fps/tps -> calculates average number of array
 function avg(array) {
     let sum = 0;
     for (let i = 0; i < array.length; i++) {
@@ -39,8 +55,8 @@ function avg(array) {
     return sum / array.length
 }
 
+// player joins or leaves
 socket.on('updatePlayers', (backendPlayers) => {
-    console.log(backendPlayers)
     for (const id in backendPlayers) {
         const bP = backendPlayers[id]
         if (!players[id]) {
@@ -62,8 +78,17 @@ socket.on('updatePlayers', (backendPlayers) => {
             delete players[id]
         }
     }
+    const movement = {
+        name: ign,
+        left: aPressed,
+        right: dPressed,
+        up: wPressed,
+        down: sPressed
+    }
+    socket.emit('movement', movement)
 })
 
+// new coordinate data
 socket.on('updateCords', (bCords) => {
     for (const id in players) {
         players[id].name = bCords[id].name
@@ -74,35 +99,53 @@ socket.on('updateCords', (bCords) => {
     yEl.innerText = players[ego].y
 })
 
+// new projectile data
+socket.on('updateProj', (backendProj) => {
+    for (const id in backendProj) {
+        const bP = backendProj[id]
+        if (!projectiles[id]) {
+            let color = 'red'
+            if (socket.id === bP.shooter) {
+                color = 'blue'
+            }
+            projectiles[id] = new Projectile({
+                x: bP.x,
+                y: bP.y,
+                radius: bP.radius,
+                color: color
+            })
+        }
+    }
+    for (const id in projectiles) {
+        if (!backendProj[id]) {
+            delete projectiles[id]
+        }
+    }
+})
+
+// new tps data
 socket.on('tps', (tps => {
     recentTPS.push(tps)
 }))
 
+// main frame loop
 let animationId
 function animate() {
     animationId = requestAnimationFrame(animate)
     c.fillStyle = 'rgba(0, 0, 0, 1)'
-    c.fillRect(0, 0, 3000*devicePxRat, 2000*devicePxRat)
+    c.fillRect(0, 0, map.width*devicePxRat, map.height*devicePxRat)
     c.strokeStyle = 'rgb(30, 30, 30)'
-    for (let i = 0; i < 3050*devicePxRat; i+=50*devicePxRat) {
+    for (let i = 0; i < (map.width+50)*devicePxRat; i+=50*devicePxRat) {
         c.moveTo(i-cam.x, 0-cam.y)
-        c.lineTo(i-cam.x, 2000*devicePxRat-cam.y)
+        c.lineTo(i-cam.x, map.height*devicePxRat-cam.y)
         c.stroke()
     }
-    for (let i = 0; i < 2050*devicePxRat; i+=50*devicePxRat) {
+    for (let i = 0; i < (map.height+50)*devicePxRat; i+=50*devicePxRat) {
         c.moveTo(0-cam.x, i-cam.y)
-        c.lineTo(3000*devicePxRat-cam.x, i-cam.y)
+        c.lineTo(map.width*devicePxRat-cam.x, i-cam.y)
         c.stroke()
     }
 
-    const movement = {
-        name: ign,
-        left: aPressed,
-        right: dPressed,
-        up: wPressed,
-        down: sPressed
-    }
-    socket.emit('movement', movement)
     cam = {
         x: players[ego].x*devicePxRat-innerWidth*devicePxRat/2,
         y: players[ego].y*devicePxRat-innerHeight*devicePxRat/2
@@ -110,6 +153,10 @@ function animate() {
     xCEl.innerText = cam.x
     yCEl.innerText = cam.y
 
+    for (const id in projectiles) {
+        const pr = projectiles[id]
+        pr.draw()
+    }
     for (const id in players) {
         const p = players[id]
         p.draw()
@@ -118,20 +165,23 @@ function animate() {
     const end = Date.now();
     recentFPS.push(Math.round(1000 / (end - lastUpdateTime)))
     lastUpdateTime = end
+    setTimeout(function () {console.log("Timeout")}, 10)
 }
 
+// fps/tps stat updater function
 async function updateTPS() {
     // FPS
     fpsEl.innerText = Math.round((avg(recentFPS) + Number.EPSILON) * 100) / 100
     recentFPS = []
 
     // TPS
-    tpsEl.innerText = Math.round((1000/avg(recentTPS) + Number.EPSILON) * 100) / 100
+    tpsEl.innerText = Math.round((avg(recentTPS) + Number.EPSILON) * 100) / 100
     recentTPS = []
     setTimeout(function () {
         updateTPS()
     }, 100)
 }
 
+// call loops
 updateTPS().then()
 animate()
