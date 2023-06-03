@@ -86,12 +86,12 @@ function animate() {
     c.strokeStyle = 'rgb(30, 30, 30)'
     for (let i = 0; i < 3050*devicePxRat; i+=50*devicePxRat) {
         c.moveTo(i-cam.x, 0-cam.y)
-        c.lineTo(i-cam.x, 2000-cam.y)
+        c.lineTo(i-cam.x, 2000*devicePxRat-cam.y)
         c.stroke()
     }
     for (let i = 0; i < 2050*devicePxRat; i+=50*devicePxRat) {
         c.moveTo(0-cam.x, i-cam.y)
-        c.lineTo(3000-cam.x, i-cam.y)
+        c.lineTo(3000*devicePxRat-cam.x, i-cam.y)
         c.stroke()
     }
 
@@ -104,8 +104,8 @@ function animate() {
     }
     socket.emit('movement', movement)
     cam = {
-        x: players[ego].x-innerWidth/2,
-        y: players[ego].y-innerHeight/2,
+        x: players[ego].x*devicePxRat-innerWidth/2,
+        y: players[ego].y*devicePxRat-innerHeight/2,
     }
     xCEl.innerText = cam.x
     yCEl.innerText = cam.y

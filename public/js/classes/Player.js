@@ -17,7 +17,7 @@ class Player {
         c.fillStyle = 'lightgray'
         c.textAlign = 'center'
         c.font = '24px Arial'
-        c.fillText(this.name, this.x*devicePxRat-cam.x, (this.y+this.radius*2)*devicePxRat-cam.y)
+        c.fillText(this.name, this.x*devicePxRat-cam.x, (this.y)*devicePxRat+this.radius*2-cam.y)
     }
 
     /*
