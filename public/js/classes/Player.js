@@ -9,7 +9,7 @@ class Player {
 
     draw() {
         c.beginPath()
-        c.arc(this.x-cam.x, this.y-cam.y, this.radius, 0, Math.PI * 2, false)
+        c.arc(this.x-cam.x*devicePxRat, this.y-cam.y*devicePxRat, this.radius, 0, Math.PI * 2, false)
         c.fillStyle = this.color
         c.fill()
         c.closePath()
@@ -17,7 +17,7 @@ class Player {
         c.fillStyle = 'lightgray'
         c.textAlign = 'center'
         c.font = '24px Arial'
-        c.fillText(this.name, this.x-cam.x, this.y+this.radius*2-cam.y)
+        c.fillText(this.name, this.x-cam.x*devicePxRat, this.y+this.radius*2-cam.y*devicePxRat)
     }
 
     /*

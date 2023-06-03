@@ -82,14 +82,14 @@ let animationId
 function animate() {
     animationId = requestAnimationFrame(animate)
     c.fillStyle = 'rgba(0, 0, 0, 1)'
-    c.fillRect(0, 0, 3000, 2000)
+    c.fillRect(0, 0, 3000*devicePxRat, 2000*devicePxRat)
     c.strokeStyle = 'rgb(30, 30, 30)'
-    for (let i = 0; i < 3050; i+=50) {
+    for (let i = 0; i < 3050*devicePxRat; i+=50) {
         c.moveTo(i-cam.x, 0-cam.y)
         c.lineTo(i-cam.x, 2000-cam.y)
         c.stroke()
     }
-    for (let i = 0; i < 2050; i+=50) {
+    for (let i = 0; i < 2050*devicePxRat; i+=50) {
         c.moveTo(0-cam.x, i-cam.y)
         c.lineTo(3000-cam.x, i-cam.y)
         c.stroke()
