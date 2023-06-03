@@ -104,8 +104,8 @@ function animate() {
     }
     socket.emit('movement', movement)
     cam = {
-        x: players[ego].x*devicePxRat-innerWidth/2,
-        y: players[ego].y*devicePxRat-innerHeight/2,
+        x: players[ego].x*devicePxRat-innerWidth*devicePxRat/2,
+        y: players[ego].y*devicePxRat-innerHeight*devicePxRat/2,
     }
     xCEl.innerText = cam.x
     yCEl.innerText = cam.y
