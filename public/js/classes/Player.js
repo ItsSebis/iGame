@@ -16,7 +16,7 @@ class Player {
         c.beginPath()
         c.fillStyle = 'lightgray'
         c.textAlign = 'center'
-        c.font = '24px Arial'
+        c.font = (24*devicePxRat)+'px Arial'
         c.fillText(this.name, this.x*devicePxRat-cam.x, (this.y)*devicePxRat+this.radius*2-cam.y)
     }
 
