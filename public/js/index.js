@@ -17,13 +17,27 @@ const devicePxRat = window.devicePixelRatio || 1
 canvas.width = innerWidth * devicePxRat
 canvas.height = innerHeight * devicePxRat
 
-// coordinates shown
+// gui elements
+const selShot = document.querySelector('#selectShot')
+const selSnipe = document.querySelector('#selectSnipe')
+const selSpray = document.querySelector('#selectSpray')
+const nameEl = document.querySelector('#name')
+const healEl = document.querySelector('#health')
+const killEl = document.querySelector('#kills')
+const deathEl = document.querySelector('#deaths')
+const logEl = document.querySelector('#log')
+const typeEl = document.querySelector('#type')
+const mEl = document.querySelector('#mEl')
 const xEl = document.querySelector('#xEl')
 const yEl = document.querySelector('#yEl')
 const xCEl = document.querySelector('#xCEl')
 const yCEl = document.querySelector('#yCEl')
+const pCEl = document.querySelector('#pCEl')
+const prCEl = document.querySelector('#prCEL')
 
 // Movement vars
+let mousedown = false
+let mouseAngle = 0
 let aPressed = false
 let dPressed = false
 let wPressed = false
@@ -45,6 +59,13 @@ let ego = undefined
 // frontend player and projectile variable
 const players = {}
 const projectiles = {}
+
+// shooting type names
+const typeNames = {
+    1: "Shooter",
+    2: "Sprayer",
+    3: "Sniper",
+}
 
 // helper function for fps/tps -> calculates average number of array
 function avg(array) {
@@ -69,8 +90,21 @@ socket.on('updatePlayers', (backendPlayers) => {
                 x: bP.x,
                 y: bP.y,
                 color: color,
-                name: bP.name
+                name: bP.name,
+                level: bP.level,
+                kills: bP.kills,
+                deaths: bP.deaths,
+                type: bP.type,
+                health: bP.health,
+                shield: bP.shield
             })
+        } else {
+            players[id].level = bP.level
+            players[id].kills = bP.kills
+            players[id].deaths = bP.deaths
+            players[id].type = bP.type
+            players[id].health = bP.health
+            players[id].shield = bP.shield
         }
     }
     for (const id in players) {
@@ -86,6 +120,11 @@ socket.on('updatePlayers', (backendPlayers) => {
         down: sPressed
     }
     socket.emit('movement', movement)
+    nameEl.innerText = ign
+    killEl.innerText = players[ego].kills
+    deathEl.innerText = players[ego].deaths
+    healEl.innerHTML = "<span style='color: lime'>" + players[ego].health + "</span> | <span style='color: #5e90da'>" + players[ego].shield + "</span>"
+    typeEl.innerText = typeNames[players[ego].type]
 })
 
 // new coordinate data
@@ -101,6 +140,11 @@ socket.on('updateCords', (bCords) => {
 
 // new projectile data
 socket.on('updateProj', (backendProj) => {
+    for (const id in projectiles) {
+        if (!backendProj[id]) {
+            delete projectiles[id]
+        }
+    }
     for (const id in backendProj) {
         const bP = backendProj[id]
         if (!projectiles[id]) {
@@ -114,13 +158,21 @@ socket.on('updateProj', (backendProj) => {
                 radius: bP.radius,
                 color: color
             })
+        } else {
+            projectiles[id].x = bP.x
+            projectiles[id].y = bP.y
         }
     }
-    for (const id in projectiles) {
-        if (!backendProj[id]) {
-            delete projectiles[id]
-        }
-    }
+})
+
+// log entry
+socket.on('logEntry', (text) => {
+    let newLog = document.createElement("p")
+    newLog.innerHTML = text
+    logEl.appendChild(newLog)
+    setTimeout(function () {
+        newLog.remove()
+    }, 5000)
 })
 
 // new tps data
@@ -132,7 +184,7 @@ socket.on('tps', (tps => {
 let animationId
 function animate() {
     animationId = requestAnimationFrame(animate)
-    c.fillStyle = 'rgba(0, 0, 0, 1)'
+    c.fillStyle = 'rgba(0, 0, 0, 0.35)'
     c.fillRect(0, 0, map.width*devicePxRat, map.height*devicePxRat)
     c.strokeStyle = 'rgb(30, 30, 30)'
     for (let i = 0; i < (map.width+50)*devicePxRat; i+=50*devicePxRat) {
@@ -146,12 +198,28 @@ function animate() {
         c.stroke()
     }
 
-    cam = {
-        x: players[ego].x*devicePxRat-innerWidth*devicePxRat/2,
-        y: players[ego].y*devicePxRat-innerHeight*devicePxRat/2
-    }
+    try {
+        cam = {
+            x: players[ego].x * devicePxRat - innerWidth * devicePxRat / 2,
+            y: players[ego].y * devicePxRat - innerHeight * devicePxRat / 2
+        }
+    } catch (e) {}
+    mEl.innerText = mouseAngle
     xCEl.innerText = cam.x
     yCEl.innerText = cam.y
+    pCEl.innerText = Object.keys(players).length
+    prCEl.innerText = Object.keys(projectiles).length
+    const movement = {
+        name: ign,
+        left: aPressed,
+        right: dPressed,
+        up: wPressed,
+        down: sPressed
+    }
+    if (mousedown) {
+        socket.emit('shoot', mouseAngle)
+    }
+    socket.emit('movement', movement)
 
     for (const id in projectiles) {
         const pr = projectiles[id]
@@ -165,7 +233,6 @@ function animate() {
     const end = Date.now();
     recentFPS.push(Math.round(1000 / (end - lastUpdateTime)))
     lastUpdateTime = end
-    setTimeout(function () {console.log("Timeout")}, 10)
 }
 
 // fps/tps stat updater function
@@ -180,6 +247,17 @@ async function updateTPS() {
     setTimeout(function () {
         updateTPS()
     }, 100)
+}
+
+// set onclick functions for type selectors
+selShot.onclick = function () {
+    socket.emit('selectType', 1)
+}
+selSpray.onclick = function () {
+    socket.emit('selectType', 2)
+}
+selSnipe.onclick = function () {
+    socket.emit('selectType', 3)
 }
 
 // call loops

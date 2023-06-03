@@ -4,11 +4,26 @@
         body {
             margin: 0;
         }
+        button {
+            outline: none;
+            background-color: lightgray;
+            height: 40px;
+            width: 120px;
+            border: lightgray solid;
+            border-radius: 12px;
+            margin: 5px;
+            font-size: 15pt;
+        }
+        button:hover {
+            color: gray;
+            cursor: pointer;
+        }
         canvas {
             width: 100%;
             height: 100%;
         }
     </style>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <link rel="icon" href="lilsharky.png">
     <title>iGame</title>
 </head>
@@ -16,10 +31,31 @@
 <div style="position: absolute; color: white; padding: 8px; font-family: sans-serif; font-size: 14px; user-select: none;">
     <span>Client FPS: <span id="fpsEL">0</span></span><br>
     <span>Server TPS: <span id="tpsEL">0</span></span><br>
+    <span>Mouse°: <span id="mEL">0</span></span><br>
     <span>X: <span id="xEL">0</span></span><br>
     <span>Y: <span id="yEL">0</span></span><br>
     <span>X-Cam: <span id="xCEL">0</span></span><br>
-    <span>Y-Cam: <span id="yCEL">0</span></span>
+    <span>Y-Cam: <span id="yCEL">0</span></span><br>
+    <span>Player: <span id="pCEL">0</span></span><br>
+    <span>Projectiles: <span id="prCEL">0</span></span>
+</div>
+<div style="position: absolute; bottom: 0; color: white; padding: 8px; font-family: sans-serif; font-size: 18px; user-select: none; text-align: center" id="table">
+
+</div>
+<div style="position: absolute; bottom: 0; color: white; padding: 8px; font-family: sans-serif; font-size: 18px; user-select: none; text-align: center" id="log"></div>
+<div style="position: absolute; bottom: 0; right: 0; color: white; padding: 8px; font-family: sans-serif; font-size: 14px; user-select: none; text-align: center">
+    <button id="selectShot"><i class='bx bx-target-lock'></i> Shooter</button><br>
+    <button id="selectSpray"><i class='bx bx-spray-can' ></i> Sprayer</button><br>
+    <button id="selectSnipe"><i class='bx bx-bullseye' ></i> Sniper</button>
+</div>
+<div style="position: absolute; top: 0; left: 50%; transform: translate(-50%, 0); color: white; padding: 8px; font-family: sans-serif; font-size: 24px; user-select: none; text-align: center">
+    <span><i class='bx bxs-bullseye' ></i> <span id="kills" style="color: lime; font-weight: 800">0</span> | </span>
+    <span><i class='bx bxs-skull' ></i> <span id="deaths" style="color: red; font-weight: 800">0</span></span>
+</div>
+<div style="position: absolute; bottom: 0; left: 50%; transform: translate(-50%, 0); color: white; padding: 8px; font-family: sans-serif; font-size: 14px; user-select: none; text-align: center">
+    <h1 id="name" style="font-size: 3rem; color: #15ffee; line-height: 10px"></h1>
+    <h3 id="health" style="font-size: 1.3rem; line-height: 1px"></h3>
+    <p id="type" style="font-size: 1.2rem; line-height: 1px"></p>
 </div>
 <canvas></canvas>
 <script>

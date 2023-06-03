@@ -1,15 +1,15 @@
 // shoot, shoot
-addEventListener('click', (event) => {
-    const angle = Math.atan2(
-        event.clientY - canvas.height / 2,
-        event.clientX - canvas.width / 2
+addEventListener('mousedown', (event) => {
+    mousedown = true
+})
+addEventListener('mousemove', (event) => {
+    mouseAngle = Math.atan2(
+        event.clientY - canvas.height * devicePxRat / 2,
+        event.clientX - canvas.width * devicePxRat / 2
     )
-
-    console.log("Shoot!")
-    socket.emit('shoot', angle)
-    /*projectiles.push(
-        new Projectile(canvas.width / 2, canvas.height / 2, 5, 'white', velocity)
-    )*/
+})
+addEventListener('mouseup', (event) => {
+    mousedown = false
 })
 
 // movement pressed
@@ -23,15 +23,6 @@ addEventListener('keydown', (event) => {
     } else if (event.key.toLowerCase() === "s") {
         sPressed = true
     }
-
-    const movement = {
-        name: ign,
-        left: aPressed,
-        right: dPressed,
-        up: wPressed,
-        down: sPressed
-    }
-    socket.emit('movement', movement)
 })
 
 // movement released
@@ -45,13 +36,4 @@ addEventListener('keyup', (event) => {
     } else if (event.key.toLowerCase() === "s") {
         sPressed = false
     }
-
-    const movement = {
-        name: ign,
-        left: aPressed,
-        right: dPressed,
-        up: wPressed,
-        down: sPressed
-    }
-    socket.emit('movement', movement)
 })

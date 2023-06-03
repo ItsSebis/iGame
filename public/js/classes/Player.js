@@ -1,31 +1,32 @@
 class Player {
-    constructor({x, y, color, name}) {
+    constructor({x, y, color, name, type, health, level, kills, deaths, shield}) {
         this.x = x
         this.y = y
         this.radius = 20 * window.devicePixelRatio
         this.color = color
         this.name = name
+        this.level = level
+        this.kills = kills
+        this.deaths = deaths
+        this.type = type
+        this.health = health
+        this.shield = shield
     }
 
     draw() {
         c.beginPath()
-        c.arc(this.x*devicePxRat-cam.x, this.y*devicePxRat-cam.y, this.radius, 0, Math.PI * 2, false)
+        c.arc(this.x*devicePxRat-cam.x, this.y*devicePxRat-cam.y, this.radius, -1 * Math.PI, Math.PI, false)
         c.fillStyle = this.color
         c.fill()
         c.closePath()
-        c.beginPath()
-        c.fillStyle = 'lightgray'
-        c.textAlign = 'center'
-        c.font = (24*devicePxRat)+'px Arial'
-        c.fillText(this.name, this.x*devicePxRat-cam.x, (this.y)*devicePxRat+this.radius*2-cam.y)
+        if (this.color !== 'blue') {
+            c.fillStyle = 'lightgray'
+            c.textAlign = 'center'
+            c.font = (24*devicePxRat)+'px Arial'
+            c.fillText(this.name, this.x*devicePxRat-cam.x, (this.y)*devicePxRat+this.radius*2-cam.y)
+            c.fillStyle = 'lime'
+            c.font = (16*devicePxRat)+'px Arial'
+            c.fillText(this.health + " | " + this.shield, this.x*devicePxRat-cam.x, (this.y)*devicePxRat+this.radius*2+(24*devicePxRat)-cam.y)
+        }
     }
-
-    /*
-    if (this.x + this.velocity.x + this.radius < canvas.width && this.x + this.velocity.x - this.radius > 0) {
-        this.x = this.x + this.velocity.x
-    }
-    if (this.y + this.velocity.y + this.radius < canvas.height && this.y + this.velocity.y - this.radius > 0) {
-        this.y = this.y + this.velocity.y
-    }
-    */
 }

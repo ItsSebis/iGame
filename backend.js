@@ -10,6 +10,7 @@ const port = 6969
 const http = require('http')
 const server = http.createServer(backend)
 const { Server } = require('socket.io')
+const e = require("express");
 const io = new Server(server, {pingInterval: 500, pingTimeout: 1000})
 
 // setup express server
@@ -30,6 +31,33 @@ const map = {
 const players = {}
 const projectiles = []
 
+const types = {
+    1: {
+        name: "Shooter",
+        dmg: 10,
+        speed: 18,
+        distance: 1200,
+        radius: 7,
+        cooldown: 1000/2.75 // ~181
+    },
+    2: {
+        name: "Sprayer",
+        dmg: 8,
+        speed: 15,
+        distance: 500,
+        radius: 12,
+        cooldown: 100
+    },
+    3: {
+        name: "Sniper",
+        dmg: 35,
+        speed: 40,
+        distance: 10000,
+        radius: 5,
+        cooldown: 800
+    }
+}
+
 // deprecated player names array
 const names = [
     "Andi Waffen", "Anna Nass", "Axel Schweiss", "Albert Tross", "Ali Baba", "Anne Wand",
@@ -39,6 +67,20 @@ const names = [
     "James Bond", "Jo Ghurt", "A. Merkel", "Ken Tucky", "Klara Fall", "Lisa Bonn", "Mark Aber", "Marta Pfahl",
     "Mary Huana", "Miss Raten", "Peter Pan", "Peter Silie", "Phil Fraß", "Reiner Korn", "Reiner Zufall", "Wilma Bier"
 ]
+
+// reset dead player
+function deadPlayer(dead, killer) {
+    console.log(players[dead].name + " player was killed by " + players[killer].name)
+    players[killer].kills += 1
+    players[dead].deaths += 1
+    players[dead].x = Math.round(map.width*Math.random())
+    players[dead].y = Math.round(map.height*Math.random())
+    players[dead].lastShootTime = 0
+    players[dead].health = 100
+    players[dead].shield = 0
+    io.emit('logEntry', "<i class='bx bxs-skull' ></i> <span style='color: red'>" + players[dead].name + "</span> (" + types[players[dead].type].name + ") " +
+        "<i class='bx bx-chevrons-left' ></i> <span style='color: lime'>" + players[killer].name + "</span> (" + types[players[killer].type].name + ")")
+}
 
 // initialize connection to socket
 io.on('connection', (socket) => {
@@ -53,11 +95,13 @@ io.on('connection', (socket) => {
         },
         name: null,
         lastShootTime: 0,
+        lastHitTime: 0,
         level: 0,
         kills: 0,
         deaths: 0,
         type: 1,
-        health: 100
+        health: 100,
+        shield: 50
     }
     // update player objects on clients
     io.emit('updatePlayers', players)
@@ -87,34 +131,49 @@ io.on('connection', (socket) => {
     })
 
     socket.on('shoot', (angle) => {
-        projectiles.push({
-            shooter: socket.id,
-            dmg: 10,
-            angle: angle,
-            type: players[socket.id].type,
-            vel: {
-                x: Math.cos(angle) * 5,
-                y: Math.sin(angle) * 5
-            },
-            x: players[socket.id].x,
-            y: players[socket.id].y,
-            origin: {
+        const type = types[players[socket.id].type]
+        if (Date.now()-players[socket.id].lastShootTime >= type.cooldown) {
+            projectiles.push({
+                shooter: socket.id,
+                angle: angle,
+                type: players[socket.id].type,
                 x: players[socket.id].x,
-                y: players[socket.id].y
-            },
-            radius: 5
-        })
+                y: players[socket.id].y,
+                vel: {
+                    x: Math.cos(angle),
+                    y: Math.sin(angle)
+                },
+                origin: {
+                    x: players[socket.id].x,
+                    y: players[socket.id].y
+                },
+                radius: type.radius
+            })
+            players[socket.id].lastShootTime = Date.now()
+        }
+    })
+
+    socket.on('selectType', (type) => {
+        if (types[type] !== undefined && Date.now() - players[socket.id].lastHitTime > 10000) {
+            players[socket.id].type = type
+            io.emit('updatePlayers', players)
+        }
     })
 
     socket.on('disconnect', (reason) => {
         console.log(reason)
         names.push(players[socket.id].name)
+        for (const id in projectiles) {
+            if (projectiles[id].shooter === socket.id) {
+                projectiles.splice(id, 1)
+            }
+        }
         delete players[socket.id]
         io.emit('updatePlayers', players)
     })
 })
 
-async function update() {
+function update() {
     for (const id in players) {
         if (players[id].x === undefined || players[id].y === undefined) {
             continue
@@ -141,6 +200,51 @@ async function update() {
         while (players[id].y + players[id].vel.y - 20 <= 0) {
             players[id].y += 10
         }
+
+        for (const pid in projectiles) {
+            const proj = projectiles[pid]
+            if (proj.shooter === id) {
+                continue
+            }
+            const dist = Math.hypot(proj.x - players[id].x, proj.y - players[id].y)
+
+            if (dist - 20 - proj.radius < 1) {
+                // projectile hit
+                players[proj.shooter].lastHitTime = Date.now()
+                if (players[id].shield > 0) {
+                    if (players[id].shield > types[proj.type].dmg) {
+                        players[id].shield -= types[proj.type].dmg
+                    } else {
+                        let restDmg = types[proj.type].dmg
+                        restDmg -= players[id].shield
+                        players[id].shield = 0
+                        players[id].health -= restDmg
+                    }
+                } else {
+                    players[id].health -= types[proj.type].dmg
+                }
+                if (players[id].health <= 0) {
+                    deadPlayer(id, proj.shooter)
+                }
+                projectiles.splice(pid, 1)
+
+                io.emit('updatePlayers', players)
+            }
+        }
+    }
+    for (const id in projectiles) {
+        try {
+            const type = types[projectiles[id].type]
+            projectiles[id].x += projectiles[id].vel.x * type.speed
+            projectiles[id].y += projectiles[id].vel.y * type.speed
+
+            const travel = Math.sqrt(Math.pow(projectiles[id].x-projectiles[id].origin.x, 2) + Math.pow(projectiles[id].y-projectiles[id].origin.y, 2))
+            if (projectiles[id].x > map.width || projectiles[id].x < 0 || projectiles[id].y > map.height || projectiles[id].y < 0 || travel > type.distance) {
+                projectiles.splice(id, 1)
+            }
+        } catch (e) {
+            projectiles.splice(id, 1)
+        }
     }
     io.emit('updateCords', players)
     io.emit('updateProj', projectiles)
@@ -152,8 +256,9 @@ async function update() {
         update()
     }, 15)
 }
-update().then()
 
 server.listen(port, () => {
     console.log(`App listening on port ${port}`)
 })
+
+update()
