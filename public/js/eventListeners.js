@@ -1,5 +1,5 @@
 // shoot, shoot
-addEventListener('mousedown', (event) => {
+addEventListener('mousedown', () => {
     mousedown = true
 })
 addEventListener('mousemove', (event) => {
@@ -8,7 +8,7 @@ addEventListener('mousemove', (event) => {
         event.clientX - canvas.width * devicePxRat / 2
     )
 })
-addEventListener('mouseup', (event) => {
+addEventListener('mouseup', () => {
     mousedown = false
 })
 
@@ -22,6 +22,12 @@ addEventListener('keydown', (event) => {
         wPressed = true
     } else if (event.key.toLowerCase() === "s") {
         sPressed = true
+    } else if (event.key === "1") {
+        socket.emit('selectType', 1)
+    } else if (event.key === "2") {
+        socket.emit('selectType', 2)
+    } else if (event.key === "3") {
+        socket.emit('selectType', 3)
     }
 })
 

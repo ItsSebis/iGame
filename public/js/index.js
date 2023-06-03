@@ -56,9 +56,10 @@ let cam = {
 // id of this client
 let ego = undefined
 
-// frontend player and projectile variable
+// frontend objects
 const players = {}
 const projectiles = {}
+let obstacles = []
 
 // shooting type names
 const typeNames = {
@@ -96,7 +97,8 @@ socket.on('updatePlayers', (backendPlayers) => {
                 deaths: bP.deaths,
                 type: bP.type,
                 health: bP.health,
-                shield: bP.shield
+                shield: bP.shield,
+                lastHitTime: bP.lastHitTime
             })
         } else {
             players[id].level = bP.level
@@ -105,6 +107,7 @@ socket.on('updatePlayers', (backendPlayers) => {
             players[id].type = bP.type
             players[id].health = bP.health
             players[id].shield = bP.shield
+            players[id].lastHitTime = bP.lastHitTime
         }
     }
     for (const id in players) {
@@ -125,6 +128,12 @@ socket.on('updatePlayers', (backendPlayers) => {
     deathEl.innerText = players[ego].deaths
     healEl.innerHTML = "<span style='color: lime'>" + players[ego].health + "</span> | <span style='color: #5e90da'>" + players[ego].shield + "</span>"
     typeEl.innerText = typeNames[players[ego].type]
+
+    const sortPlayers = players
+    sortPlayers.sort(function (a, b) {
+        return a.kills - b.kills
+    })
+    console.log(sortPlayers)
 })
 
 // new coordinate data
@@ -165,6 +174,11 @@ socket.on('updateProj', (backendProj) => {
     }
 })
 
+// set obstacle map
+socket.on('setObstacles', (backendObstacles) => {
+    obstacles = backendObstacles
+})
+
 // log entry
 socket.on('logEntry', (text) => {
     let newLog = document.createElement("p")
@@ -172,7 +186,7 @@ socket.on('logEntry', (text) => {
     logEl.appendChild(newLog)
     setTimeout(function () {
         newLog.remove()
-    }, 5000)
+    }, 7500)
 })
 
 // new tps data
@@ -190,13 +204,12 @@ function animate() {
     for (let i = 0; i < (map.width+50)*devicePxRat; i+=50*devicePxRat) {
         c.moveTo(i-cam.x, 0-cam.y)
         c.lineTo(i-cam.x, map.height*devicePxRat-cam.y)
-        c.stroke()
     }
     for (let i = 0; i < (map.height+50)*devicePxRat; i+=50*devicePxRat) {
         c.moveTo(0-cam.x, i-cam.y)
         c.lineTo(map.width*devicePxRat-cam.x, i-cam.y)
-        c.stroke()
     }
+    c.stroke()
 
     try {
         cam = {
@@ -204,6 +217,21 @@ function animate() {
             y: players[ego].y * devicePxRat - innerHeight * devicePxRat / 2
         }
     } catch (e) {}
+    if (Date.now() - players[ego].lastHitTime < 10000) {
+        selShot.setAttribute("disabled", "disabled")
+        selSpray.setAttribute("disabled", "disabled")
+        selSnipe.setAttribute("disabled", "disabled")
+        selShot.innerText = Math.round((10000 - (Date.now() - players[ego].lastHitTime))/100)/10
+        selSpray.innerText = Math.round((10000 - (Date.now() - players[ego].lastHitTime))/100)/10
+        selSnipe.innerText = Math.round((10000 - (Date.now() - players[ego].lastHitTime))/100)/10
+    } else if (selSpray.hasAttribute("disabled")) {
+        selShot.removeAttribute("disabled")
+        selSpray.removeAttribute("disabled")
+        selSnipe.removeAttribute("disabled")
+        selShot.innerHTML =  "<i class='bx bx-target-lock'></i> Shooter"
+        selSpray.innerHTML = "<i class='bx bx-wifi'></i> Sprayer"
+        selSnipe.innerHTML = "<i class='bx bx-bullseye' ></i> Sniper"
+    }
     mEl.innerText = mouseAngle
     xCEl.innerText = cam.x
     yCEl.innerText = cam.y
@@ -221,6 +249,11 @@ function animate() {
     }
     socket.emit('movement', movement)
 
+    for (const id in obstacles) {
+        const obst = obstacles[id]
+        c.fillStyle = "rgba(255, 0, 0, 0.1)"
+        c.fillRect(obst.start.x*devicePxRat-cam.x, obst.start.y*devicePxRat-cam.y, obst.end.x*devicePxRat, obst.end.y*devicePxRat)
+    }
     for (const id in projectiles) {
         const pr = projectiles[id]
         pr.draw()
