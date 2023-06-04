@@ -28,6 +28,7 @@ const deathEl = document.querySelector('#deaths')
 const logEl = document.querySelector('#log')
 const typeEl = document.querySelector('#type')
 const mEl = document.querySelector('#mEl')
+const mPEl = document.querySelector('#moCEL')
 const xEl = document.querySelector('#xEl')
 const yEl = document.querySelector('#yEl')
 const xCEl = document.querySelector('#xCEl')
@@ -38,6 +39,10 @@ const prCEl = document.querySelector('#prCEL')
 // Movement vars
 let mousedown = false
 let mouseAngle = 0
+let mousePos = {
+    x: 0,
+    y: 0
+}
 let aPressed = false
 let dPressed = false
 let wPressed = false
@@ -233,6 +238,7 @@ function animate() {
         selSnipe.innerHTML = "<i class='bx bx-bullseye' ></i> Sniper"
     }
     mEl.innerText = mouseAngle
+    mPEl.innerText = "x: " + mousePos.x + " y: " + mousePos.y
     xCEl.innerText = cam.x
     yCEl.innerText = cam.y
     pCEl.innerText = Object.keys(players).length

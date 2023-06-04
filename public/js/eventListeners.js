@@ -4,9 +4,11 @@ addEventListener('mousedown', () => {
 })
 addEventListener('mousemove', (event) => {
     mouseAngle = Math.atan2(
-        event.clientY * devicePxRat - canvas.height * devicePxRat / 2,
-        event.clientX * devicePxRat - canvas.width * devicePxRat / 2
+        event.y * devicePxRat - canvas.height * devicePxRat / 2,
+        event.x * devicePxRat - canvas.width * devicePxRat / 2
     )
+    mousePos.x = event.x
+    mousePos.y = event.y
 })
 addEventListener('mouseup', () => {
     mousedown = false

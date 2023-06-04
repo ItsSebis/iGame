@@ -385,7 +385,6 @@ function update() {
 }
 
 async function oneSecTick() {
-    console.log("Checking obstacle...")
     for (const id in obstacles) {
         const obst = obstacles[id]
         for (const player in players) {
