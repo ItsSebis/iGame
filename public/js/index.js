@@ -3,7 +3,7 @@ const canvas = document.querySelector('canvas')
 const c = canvas.getContext('2d')
 
 // socket.io connection
-const socket = io();
+const socket = io()
 
 // client fps and server tps stat elements
 const fpsEl = document.querySelector('#fpsEl')
@@ -18,6 +18,7 @@ canvas.width = innerWidth * devicePxRat
 canvas.height = innerHeight * devicePxRat
 
 // gui elements
+const tBodyEl = document.querySelector('#standBody')
 const selShot = document.querySelector('#selectShot')
 const selSnipe = document.querySelector('#selectSnipe')
 const selSpray = document.querySelector('#selectSpray')
@@ -64,6 +65,7 @@ let ego = undefined
 // frontend objects
 const players = {}
 const projectiles = {}
+let items = []
 let obstacles = []
 
 // shooting type names
@@ -82,6 +84,61 @@ function avg(array) {
     return sum / array.length
 }
 
+// sort standings table
+function sortTable() {
+    let table, rows, switching, i, x, y, a, b, shouldSwitch;
+    table = document.getElementById("standings");
+    switching = true;
+    while (switching) {
+        switching = false;
+        rows = table.getElementsByTagName("TR");
+        for (i = 0; i < (rows.length - 1); i++) {
+            shouldSwitch = false;
+            /*Get the two elements you want to compare,
+            one from current row and one from the next:*/
+            x = rows[i].getElementsByTagName("TD")[2];
+            y = rows[i + 1].getElementsByTagName("TD")[2];
+            //check if the two rows should switch place:
+            if (Number(x.innerHTML) > Number(y.innerHTML)) {
+                //if so, mark as a switch and break the loop:
+                shouldSwitch = true;
+                break;
+            }
+        }
+        if (shouldSwitch) {
+            /*If a switch has been marked, make the switch and mark that a switch has been done:*/
+            rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+            //console.log("Switched " + )
+            switching = true;
+        }
+    }
+
+    switching = true
+    while (switching) {
+        switching = false;
+        rows = table.getElementsByTagName("TR");
+        for (i = 0; i < (rows.length - 1); i++) {
+            shouldSwitch = false;
+            /*Get the two elements you want to compare,
+            one from current row and one from the next:*/
+            x = rows[i].getElementsByTagName("TD")[1];
+            y = rows[i + 1].getElementsByTagName("TD")[1];
+            //check if the two rows should switch place:
+            if (Number(x.innerHTML) < Number(y.innerHTML)) {
+                //if so, mark as a switch and break the loop:
+                shouldSwitch = true;
+                break;
+            }
+        }
+        if (shouldSwitch) {
+            /*If a switch has been marked, make the switch and mark that a switch has been done:*/
+            rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+            //console.log("Switched " + )
+            switching = true;
+        }
+    }
+}
+
 // player joins or leaves
 socket.on('updatePlayers', (backendPlayers) => {
     for (const id in backendPlayers) {
@@ -93,6 +150,7 @@ socket.on('updatePlayers', (backendPlayers) => {
                 ego = id
             }
             players[id] = new Player({
+                id: id,
                 x: bP.x,
                 y: bP.y,
                 color: color,
@@ -106,6 +164,7 @@ socket.on('updatePlayers', (backendPlayers) => {
                 lastHitTime: bP.lastHitTime
             })
         } else {
+            players[id].name = bP.name
             players[id].level = bP.level
             players[id].kills = bP.kills
             players[id].deaths = bP.deaths
@@ -134,11 +193,27 @@ socket.on('updatePlayers', (backendPlayers) => {
     healEl.innerHTML = "<span style='color: lime'>" + players[ego].health + "</span> | <span style='color: #5e90da'>" + players[ego].shield + "</span>"
     typeEl.innerText = typeNames[players[ego].type]
 
-    const sortPlayers = players
-    //sortPlayers.sort(function (a, b) {
-    //    return a.kills - b.kills
-    //})
-    console.log(sortPlayers)
+    tBodyEl.innerHTML = ""
+    for (const id in players) {
+        const p = players[id]
+
+        const row = document.createElement("tr")
+        const name = document.createElement("td")
+        const kills = document.createElement("td")
+        const deaths = document.createElement("td")
+
+        //console.log("Table entry: " + p.name + " k: " + p.kills + " d: " + p.deaths)
+        name.innerText = p.name
+        row.appendChild(name)
+        kills.innerText = p.kills
+        row.appendChild(kills)
+        deaths.innerText = p.deaths
+        row.appendChild(deaths)
+
+        tBodyEl.appendChild(row)
+    }
+
+    sortTable()
 })
 
 // new coordinate data
@@ -179,6 +254,11 @@ socket.on('updateProj', (backendProj) => {
     }
 })
 
+// update items on map
+socket.on('updateItems', (backendItems) => {
+    items = backendItems
+})
+
 // set obstacle map
 socket.on('setObstacles', (backendObstacles) => {
     obstacles = backendObstacles
@@ -194,6 +274,27 @@ socket.on('logEntry', (text) => {
     }, 7500)
 })
 
+// registered shot
+socket.on('shot', () => {
+    const snd = new Audio("sounds/scar-shoot.wav")
+    snd.play().then()
+})
+
+// damage dealt
+socket.on('damageDealt', (critical) => {
+    let snd = new Audio("sounds/hit.wav")
+    if (critical) {
+        snd = new Audio("sounds/critical.wav")
+    }
+    snd.play().then()
+})
+
+// new kill
+socket.on('kill', () => {
+    const snd = new Audio("sounds/kill.wav")
+    snd.play().then()
+})
+
 // new tps data
 socket.on('tps', (tps => {
     recentTPS.push(tps)
@@ -203,7 +304,7 @@ socket.on('tps', (tps => {
 let animationId
 function animate() {
     animationId = requestAnimationFrame(animate)
-    c.fillStyle = 'rgba(0, 0, 0, 0.35)'
+    c.fillStyle = 'rgba(0, 0, 0, 1)'
     c.fillRect(0, 0, canvas.width, canvas.height)
     c.strokeStyle = 'rgb(30, 30, 30)'
     for (let i = 0; i < (map.width+50)*devicePxRat; i+=50*devicePxRat) {
@@ -238,7 +339,7 @@ function animate() {
         }
     } catch (e) {}
     mEl.innerText = mouseAngle
-    mPEl.innerText = "x: " + mousePos.x + " y: " + mousePos.y
+    mPEl.innerText = "x: " + (mousePos.x/devicePxRat+cam.x) + " y: " + (mousePos.y/devicePxRat+cam.y)
     xCEl.innerText = cam.x
     yCEl.innerText = cam.y
     pCEl.innerText = Object.keys(players).length
@@ -257,8 +358,24 @@ function animate() {
 
     for (const id in obstacles) {
         const obst = obstacles[id]
-        c.fillStyle = "rgba(255, 0, 0, 0.1)"
+        c.fillStyle = "rgba(255, 0, 0, 0.2)"
         c.fillRect(obst.start.x*devicePxRat-cam.x, obst.start.y*devicePxRat-cam.y, obst.end.x*devicePxRat, obst.end.y*devicePxRat)
+    }
+    for (const id in items) {
+        const item = items[id]
+        let color
+        if (item.type === 0) {
+            color = "rgba(0, 255, 0, 0.5)"
+        } else if (item.type === 1) {
+            color = "rgba(94,144,218, 0.5)"
+        } else {
+            color = "rgba(255, 255, 0, 0.5)"
+        }
+        c.beginPath()
+        c.fillStyle = color
+        c.arc(item.x*devicePxRat-cam.x, item.y*devicePxRat-cam.y, 30*devicePxRat, 0, Math.PI*2, false)
+        c.fill()
+        c.closePath()
     }
     for (const id in projectiles) {
         const pr = projectiles[id]

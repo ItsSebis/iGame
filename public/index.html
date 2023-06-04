@@ -34,6 +34,40 @@
             color: black;
             background-color: darkgray;
         }
+        table {
+            background-color: #4a4a4a;
+            border: solid #4a4a4a;
+            border-radius: 15px;
+            text-align: center;
+        }
+        thead {
+            color: white;
+            font-size: 24pt;
+        }
+        tbody {
+            color: white;
+            font-size: 18pt;
+        }
+        tbody tr {
+            margin: 10px;
+            padding: 15px;
+            border-radius: 12px;
+        }
+        tbody tr td {
+            padding: 12px 15px;
+            max-width: 150px;
+            overflow: hidden;
+        }
+        #standBody tr:nth-child(even) {
+            background-color: #4a4a4a;
+            border-left: solid #3c3c3c;
+            border-right: solid #3c3c3c;
+        }
+        #standBody tr:nth-child(odd) {
+            background-color: #3c3c3c;
+            border-left: solid #4a4a4a;
+            border-right: solid #4a4a4a;
+        }
         canvas {
             width: 100%;
             height: 100%;
@@ -56,14 +90,23 @@
     <span>Player: <span id="pCEL">0</span></span><br>
     <span>Projectiles: <span id="prCEL">0</span></span>
 </div>
-<div style="position: absolute; bottom: 0; color: white; padding: 8px; font-family: sans-serif; font-size: 18px; user-select: none; text-align: center" id="table">
-
+<div style="position: absolute; right: 0; color: white; padding: 8px; font-family: sans-serif; font-size: 24px; user-select: none; text-align: center;max-height: 50%; overflow-y: hidden" id="table">
+<table id="standings" style="">
+    <thead>
+    <tr>
+        <td>Name</td>
+        <td><i class='bx bxs-bullseye' style="color: lime"></i></td>
+        <td><i class='bx bxs-skull' style="color: red"></i></td>
+    </tr>
+    </thead>
+    <tbody id="standBody"></tbody>
+</table>
 </div>
 <div style="position: absolute; bottom: 0; color: white; padding: 8px; font-family: sans-serif; font-size: 18px; user-select: none; text-align: center" id="log"></div>
 <div style="position: absolute; bottom: 0; right: 0; color: white; padding: 8px; font-family: sans-serif; font-size: 24px; user-select: none; text-align: center">
-    <span>1</span><button id='selectShot'><i class='bx bx-target-lock'></i> Shooter</button><br>
-    <span>2</span><button id='selectSpray'><i class='bx bx-wifi'></i> Sprayer</button><br>
-    <span>3</span><button id='selectSnipe'><i class='bx bx-bullseye' ></i> Sniper</button>
+    <span>1</span><button id='selectShot' title="15 Damage, 1500px range, 20% Crit, 363ms cooldown"><i class='bx bx-target-lock'></i> Shooter</button><br>
+    <span>2</span><button id='selectSpray' title="8 Damage, 500px range, 0% Crit, 100ms cooldown"><i class='bx bx-wifi'></i> Sprayer</button><br>
+    <span>3</span><button id='selectSnipe' title="35 Damage, 10000px range, 10% Crit, 800ms"><i class='bx bx-bullseye' ></i> Sniper</button>
 </div>
 <div style="position: absolute; top: 0; left: 50%; transform: translate(-50%, 0); color: white; padding: 8px; font-family: sans-serif; font-size: 24px; user-select: none; text-align: center">
     <span><i class='bx bxs-bullseye' ></i> <span id="kills" style="color: lime; font-weight: 800">0</span> | </span>

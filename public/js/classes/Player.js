@@ -1,5 +1,6 @@
 class Player {
-    constructor({x, y, color, name, type, health, level, kills, deaths, shield, lastHitTime}) {
+    constructor({id, x, y, color, name, type, health, level, kills, deaths, shield, lastHitTime}) {
+        this.id = id
         this.x = x
         this.y = y
         this.radius = 20 * window.devicePixelRatio
@@ -20,7 +21,7 @@ class Player {
         c.fillStyle = this.color
         c.fill()
         c.closePath()
-        if (this.color !== 'blue') {
+        if (this.id !== ego) {
             c.fillStyle = 'lightgray'
             c.textAlign = 'center'
             c.font = (24*devicePxRat)+'px Arial'

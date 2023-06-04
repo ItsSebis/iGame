@@ -29,6 +29,7 @@ const map = {
 // backend objects
 const players = {}
 const projectiles = []
+const items = []
 const obstacles = [
     {
         start: {
@@ -120,16 +121,327 @@ const obstacles = [
             y: 150
         }
     },
+    {
+        start: {
+            x: 1250,
+            y: 200,
+        },
+        end: {
+            x: 500,
+            y: 200
+        }
+    },
+    {
+        start: {
+            x: 950,
+            y: 250,
+        },
+        end: {
+            x: 150,
+            y: 100
+        }
+    },
+    {
+        start: {
+            x: 850,
+            y: 250,
+        },
+        end: {
+            x: 100,
+            y: 450
+        }
+    },
+    {
+        start: {
+            x: 1450,
+            y: 0,
+        },
+        end: {
+            x: 100,
+            y: 200
+        }
+    },
+    {
+        start: {
+            x: 2000,
+            y: 450,
+        },
+        end: {
+            x: 300,
+            y: 100
+        }
+    },
+    {
+        start: {
+            x: 650,
+            y: 850,
+        },
+        end: {
+            x: 150,
+            y: 300
+        }
+    },
+    {
+        start: {
+            x: 300,
+            y: 800,
+        },
+        end: {
+            x: 50,
+            y: 400
+        }
+    },
+    {
+        start: {
+            x: 50,
+            y: 950,
+        },
+        end: {
+            x: 200,
+            y: 100
+        }
+    },
+    {
+        start: {
+            x: 500,
+            y: 350,
+        },
+        end: {
+            x: 300,
+            y: 100
+        }
+    },
+    {
+        start: {
+            x: 200,
+            y: 400,
+        },
+        end: {
+            x: 200,
+            y: 200
+        }
+    },
+    {
+        start: {
+            x: 450,
+            y: 0,
+        },
+        end: {
+            x: 100,
+            y: 250
+        }
+    },
+    {
+        start: {
+            x: 0,
+            y: 250,
+        },
+        end: {
+            x: 250,
+            y: 50
+        }
+    },
+    {
+        start: {
+            x: 200,
+            y: 1400,
+        },
+        end: {
+            x: 200,
+            y: 200
+        }
+    },
+    {
+        start: {
+            x: 450,
+            y: 950,
+        },
+        end: {
+            x: 100,
+            y: 100
+        }
+    },
+    {
+        start: {
+            x: 500,
+            y: 1550,
+        },
+        end: {
+            x: 250,
+            y: 100
+        }
+    },
+    {
+        start: {
+            x: 850,
+            y: 1300,
+        },
+        end: {
+            x: 100,
+            y: 550
+        }
+    },
+    {
+        start: {
+            x: 950,
+            y: 1650,
+        },
+        end: {
+            x: 150,
+            y: 100
+        }
+    },
+    {
+        start: {
+            x: 0,
+            y: 1700,
+        },
+        end: {
+            x: 250,
+            y: 50
+        }
+    },
+    {
+        start: {
+            x: 450,
+            y: 1750,
+        },
+        end: {
+            x: 100,
+            y: 250
+        }
+    },
+    {
+        start: {
+            x: 2300,
+            y: 250,
+        },
+        end: {
+            x: 250,
+            y: 100
+        }
+    },
+    {
+        start: {
+            x: 2650,
+            y: 200,
+        },
+        end: {
+            x: 300,
+            y: 50
+        }
+    },
+    {
+        start: {
+            x: 2050,
+            y: 700,
+        },
+        end: {
+            x: 600,
+            y: 150
+        }
+    },
+    {
+        start: {
+            x: 2600,
+            y: 1000,
+        },
+        end: {
+            x: 350,
+            y: 100
+        }
+    },
+    {
+        start: {
+            x: 2150,
+            y: 1050,
+        },
+        end: {
+            x: 300,
+            y: 400
+        }
+    },
+    {
+        start: {
+            x: 1750,
+            y: 1500,
+        },
+        end: {
+            x: 50,
+            y: 500
+        }
+    },
+    {
+        start: {
+            x: 1250,
+            y: 1600,
+        },
+        end: {
+            x: 250,
+            y: 100
+        }
+    },
+    {
+        start: {
+            x: 1200,
+            y: 1800,
+        },
+        end: {
+            x: 100,
+            y: 200
+        }
+    },
+    {
+        start: {
+            x: 1800,
+            y: 1650,
+        },
+        end: {
+            x: 300,
+            y: 100
+        }
+    },
+    {
+        start: {
+            x: 2500,
+            y: 1300,
+        },
+        end: {
+            x: 300,
+            y: 50
+        }
+    },
+    {
+        start: {
+            x: 2350,
+            y: 1600,
+        },
+        end: {
+            x: 100,
+            y: 350
+        }
+    },
+    {
+        start: {
+            x: 2700,
+            y: 1550,
+        },
+        end: {
+            x: 250,
+            y: 150
+        }
+    },
 ]
 
 const types = {
     1: {
         name: "Shooter",
-        dmg: 10,
+        dmg: 15,
         speed: 18,
-        distance: 1200,
+        distance: 1500,
         radius: 7,
-        cooldown: 1000/2.75 // 363
+        cooldown: 1000/2.75, // 363
+        critical: 5
     },
     2: {
         name: "Sprayer",
@@ -137,15 +449,17 @@ const types = {
         speed: 15,
         distance: 500,
         radius: 12,
-        cooldown: 100
+        cooldown: 100,
+        critical: 0
     },
     3: {
         name: "Sniper",
         dmg: 35,
-        speed: 40,
+        speed: 45,
         distance: 10000,
-        radius: 5,
-        cooldown: 800
+        radius: 3,
+        cooldown: 800,
+        critical: 10
     }
 }
 
@@ -159,13 +473,32 @@ const names = [
     "Mary Huana", "Miss Raten", "Peter Pan", "Peter Silie", "Phil Fraß", "Reiner Korn", "Reiner Zufall", "Wilma Bier"
 ]
 
+// add health to player
+function healPlayer(target, heal, overflow) {
+    if (players[target] !== undefined) {
+        if (players[target].health + heal <= 100) {
+            players[target].health += heal
+        } else {
+            heal -= 100-players[target].health
+            players[target].health = 100
+            if (overflow) {
+                if (players[target].shield + heal <= 100) {
+                    players[target].shield += heal
+                } else {
+                    players[target].shield = 100
+                }
+            }
+        }
+    }
+}
+
 // player damage
-function dmgPlayer(target, dmg, attacker) {
-    console.log(dmg + " damage to " + players[target].name)
+function dmgPlayer(target, dmg, attacker, venom) {
     if (attacker !== undefined) {
+        console.log(dmg + " damage to " + players[target].name)
         players[target].lastDamager = attacker
     }
-    if (players[target].shield > 0) {
+    if (players[target].shield > 0 && !venom) {
         if (players[target].shield > dmg) {
             players[target].shield -= dmg
         } else {
@@ -177,6 +510,7 @@ function dmgPlayer(target, dmg, attacker) {
     } else {
         players[target].health -= dmg
     }
+    io.to(target).emit('damageDealt', false)
     if (players[target].health <= 0) {
         deadPlayer(target, attacker)
     }
@@ -195,6 +529,8 @@ function deadPlayer(dead) {
         killerName = players[killer].name
         killerType = "(" + types[players[killer].type].name + ")"
         players[killer].kills += 1
+        healPlayer(killer, 25, true)
+        io.to(killer).emit('kill')
     }
     console.log(players[dead].name + " player was killed by " + killerName)
     players[dead].deaths += 1
@@ -203,6 +539,7 @@ function deadPlayer(dead) {
     players[dead].lastShootTime = 0
     players[dead].health = 100
     players[dead].shield = 0
+    players[dead].lastDamager = undefined
     io.emit('logEntry', "<i class='bx bxs-skull' ></i> <span style='color: red'>" + players[dead].name + "</span> (" + types[players[dead].type].name + ") " +
         "<i class='bx bx-chevrons-left' ></i> <span style='color: lime'>" + killerName + "</span> " + killerType)
 }
@@ -249,7 +586,11 @@ io.on('connection', (socket) => {
 
     // update velocity on player movement
     socket.on('movement', (movement) => {
-        players[socket.id].name = movement.name
+        if (players[socket.id].name !== movement.name) {
+            console.log("Changed name of " + movement.name)
+            players[socket.id].name = movement.name
+            io.emit('updatePlayers', players)
+        }
         if (movement.left ^ movement.right) {
             if (movement.left) {
                 players[socket.id].vel.x = -1*speed
@@ -268,7 +609,6 @@ io.on('connection', (socket) => {
         } else {
             players[socket.id].vel.y = 0
         }
-        socket.emit('updateCords', players)
     })
 
     socket.on('shoot', (angle) => {
@@ -288,9 +628,11 @@ io.on('connection', (socket) => {
                     x: players[socket.id].x,
                     y: players[socket.id].y
                 },
-                radius: type.radius
+                radius: type.radius,
+                distance: type.distance
             })
             players[socket.id].lastShootTime = Date.now()
+            io.to(socket.id).emit('shot')
         }
     })
 
@@ -303,6 +645,7 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', (reason) => {
         console.log(reason)
+        io.emit('logEntry', players[socket.id].name + " left the game")
         names.push(players[socket.id].name)
         for (const id in projectiles) {
             if (projectiles[id].shooter === socket.id) {
@@ -323,8 +666,21 @@ function update() {
 
             const travel = Math.sqrt(Math.pow(projectiles[id].x-projectiles[id].origin.x, 2) +
                 Math.pow(projectiles[id].y-projectiles[id].origin.y, 2))
+            if (inObstacle(projectiles[id].x, projectiles[id].y, type.radius)) {
+                projectiles[id].distance -= 8000
+            }
+            for (const pid in projectiles) {
+                if (projectiles[id].shooter === projectiles[pid].shooter) {
+                    continue
+                }
+                const dist = Math.hypot(projectiles[id].x - projectiles[pid].x, projectiles[id].y - projectiles[pid].y)
+
+                if (dist - type.radius - types[projectiles[pid].type].radius < 1) {
+                    projectiles[id].distance -= 1000
+                }
+            }
             if (projectiles[id].x > map.width || projectiles[id].x < 0 || projectiles[id].y > map.height ||
-                projectiles[id].y < 0 || travel > type.distance || inObstacle(projectiles[id].x, projectiles[id].y, type.radius)) {
+                projectiles[id].y < 0 || travel > projectiles[id].distance) {
                 projectiles.splice(id, 1)
             }
         } catch (e) {
@@ -336,9 +692,14 @@ function update() {
             continue
         }
 
+        let factor = 1
+        if (inObstacle(players[id].x, players[id].y, 20)) {
+            factor = 0.75
+        }
+
         // x position
         if (players[id].x + players[id].vel.x + 20 < map.width && players[id].x + players[id].vel.x - 20 > 0) {
-            players[id].x = players[id].x + players[id].vel.x
+            players[id].x = players[id].x + players[id].vel.x*factor
         }
         while (players[id].x + players[id].vel.x + 20 >= map.width) {
             players[id].x -= 10
@@ -349,7 +710,7 @@ function update() {
 
         // y position
         if (players[id].y + players[id].vel.y + 20 < map.height && players[id].y + players[id].vel.y - 20 > 0) {
-            players[id].y = players[id].y + players[id].vel.y
+            players[id].y = players[id].y + players[id].vel.y*factor
         }
         while (players[id].y + players[id].vel.y + 20 >= map.height) {
             players[id].y -= 10
@@ -368,12 +729,46 @@ function update() {
             if (dist - 20 - proj.radius < 1) {
                 // projectile hit
                 players[proj.shooter].lastHitTime = Date.now()
-                dmgPlayer(id, types[proj.type].dmg, proj.shooter)
-                projectiles.splice(pid, 1)
+                let dmg = Math.round(types[proj.type].dmg/(types[proj.type].distance/proj.distance))
+                const random = Math.floor(Math.random()*types[proj.type].critical)+1
+                io.to(proj.shooter).emit('damageDealt', (random === types[proj.type].critical))
+                if (random === types[proj.type].critical) {
+                    dmg *= 2
+                }
+                dmgPlayer(id, dmg, proj.shooter, false)
+                projectiles[pid].distance -= 3000
+            }
+        }
+
+        for (const iid in items) {
+            const item = items[iid]
+
+            const dist = Math.hypot(item.x - players[id].x, item.y - players[id].y)
+
+            if (dist - 20 - 30 < 1) {
+                // touched item
+                if (item.type === 0) {
+                    if (players[id].health < 100) {
+                        players[id].health = 100
+                        items.splice(iid, 1)
+                    }
+                } else if (item.type === 1) {
+                    if (players[id].shield < 100) {
+                        players[id].shield = 100
+                        items.splice(iid, 1)
+                    }
+                } else {
+                    if (players[id].health < 100 || players[id].shield < 100) {
+                        healPlayer(id, 75, true)
+                        items.splice(iid, 1)
+                    }
+                }
+                io.emit('updatePlayers', players)
             }
         }
     }
     io.emit('updateCords', players)
+    io.emit('updateItems', items)
     io.emit('updateProj', projectiles)
     const end = Date.now();
     //console.log("\rCurrent TPS: " + Math.round(1000/(end-lastUpdateTime)))
@@ -389,14 +784,22 @@ async function oneSecTick() {
         const obst = obstacles[id]
         for (const player in players) {
             const p = players[player]
-            if (p.x + 20 > obst.start.x &&
-                p.y + 20 > obst.start.y &&
-                p.x - 20 < obst.start.x + obst.end.x &&
-                p.y - 20 < obst.start.y + obst.end.y) {
+            if (p.x + 10 > obst.start.x &&
+                p.y + 10 > obst.start.y &&
+                p.x - 10 < obst.start.x + obst.end.x &&
+                p.y - 10 < obst.start.y + obst.end.y) {
                 // player is in obstacle
-                dmgPlayer(player, 15, undefined)
+                dmgPlayer(player, 10, undefined, true) // zero damage for tests
             }
         }
+    }
+    if (items.length < 5) {
+        items.push({
+            x: map.width*Math.random(),
+            y: map.height*Math.random(),
+            type: Math.floor(3*Math.random())
+        })
+        io.emit('updateItems', items)
     }
     setTimeout(function () {
         oneSecTick()
