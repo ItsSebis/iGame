@@ -135,9 +135,9 @@ socket.on('updatePlayers', (backendPlayers) => {
     typeEl.innerText = typeNames[players[ego].type]
 
     const sortPlayers = players
-    sortPlayers.sort(function (a, b) {
-        return a.kills - b.kills
-    })
+    //sortPlayers.sort(function (a, b) {
+    //    return a.kills - b.kills
+    //})
     console.log(sortPlayers)
 })
 
@@ -204,7 +204,7 @@ let animationId
 function animate() {
     animationId = requestAnimationFrame(animate)
     c.fillStyle = 'rgba(0, 0, 0, 0.35)'
-    c.fillRect(0, 0, map.width*devicePxRat, map.height*devicePxRat)
+    c.fillRect(0, 0, canvas.width, canvas.height)
     c.strokeStyle = 'rgb(30, 30, 30)'
     for (let i = 0; i < (map.width+50)*devicePxRat; i+=50*devicePxRat) {
         c.moveTo(i-cam.x, 0-cam.y)
@@ -221,22 +221,22 @@ function animate() {
             x: players[ego].x * devicePxRat - innerWidth * devicePxRat / 2,
             y: players[ego].y * devicePxRat - innerHeight * devicePxRat / 2
         }
+        if (Date.now() - players[ego].lastHitTime < 10000) {
+            selShot.setAttribute("disabled", "disabled")
+            selSpray.setAttribute("disabled", "disabled")
+            selSnipe.setAttribute("disabled", "disabled")
+            selShot.innerText = Math.round((10000 - (Date.now() - players[ego].lastHitTime))/100)/10
+            selSpray.innerText = Math.round((10000 - (Date.now() - players[ego].lastHitTime))/100)/10
+            selSnipe.innerText = Math.round((10000 - (Date.now() - players[ego].lastHitTime))/100)/10
+        } else if (selSpray.hasAttribute("disabled")) {
+            selShot.removeAttribute("disabled")
+            selSpray.removeAttribute("disabled")
+            selSnipe.removeAttribute("disabled")
+            selShot.innerHTML =  "<i class='bx bx-target-lock'></i> Shooter"
+            selSpray.innerHTML = "<i class='bx bx-wifi'></i> Sprayer"
+            selSnipe.innerHTML = "<i class='bx bx-bullseye' ></i> Sniper"
+        }
     } catch (e) {}
-    if (Date.now() - players[ego].lastHitTime < 10000) {
-        selShot.setAttribute("disabled", "disabled")
-        selSpray.setAttribute("disabled", "disabled")
-        selSnipe.setAttribute("disabled", "disabled")
-        selShot.innerText = Math.round((10000 - (Date.now() - players[ego].lastHitTime))/100)/10
-        selSpray.innerText = Math.round((10000 - (Date.now() - players[ego].lastHitTime))/100)/10
-        selSnipe.innerText = Math.round((10000 - (Date.now() - players[ego].lastHitTime))/100)/10
-    } else if (selSpray.hasAttribute("disabled")) {
-        selShot.removeAttribute("disabled")
-        selSpray.removeAttribute("disabled")
-        selSnipe.removeAttribute("disabled")
-        selShot.innerHTML =  "<i class='bx bx-target-lock'></i> Shooter"
-        selSpray.innerHTML = "<i class='bx bx-wifi'></i> Sprayer"
-        selSnipe.innerHTML = "<i class='bx bx-bullseye' ></i> Sniper"
-    }
     mEl.innerText = mouseAngle
     mPEl.innerText = "x: " + mousePos.x + " y: " + mousePos.y
     xCEl.innerText = cam.x
