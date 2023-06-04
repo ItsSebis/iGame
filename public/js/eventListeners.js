@@ -30,6 +30,8 @@ addEventListener('keydown', (event) => {
         socket.emit('selectType', 2)
     } else if (event.key === "3") {
         socket.emit('selectType', 3)
+    } else if (event.key.toLowerCase() === "e") {
+        mousedown = !mousedown
     }
 })
 
