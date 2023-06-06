@@ -69,7 +69,7 @@ let items = []
 let obstacles = []
 
 // shooting type names
-const typeNames = {
+let types = {
     1: "Shooter",
     2: "Sprayer",
     3: "Sniper",
@@ -88,6 +88,31 @@ function avg(array) {
 function sortTable() {
     let table, rows, switching, i, x, y, a, b, shouldSwitch;
     table = document.getElementById("standings");
+    switching = true;
+    while (switching) {
+        switching = false;
+        rows = table.getElementsByTagName("TR");
+        for (i = 0; i < (rows.length - 1); i++) {
+            shouldSwitch = false;
+            /*Get the two elements you want to compare,
+            one from current row and one from the next:*/
+            x = rows[i].getElementsByTagName("TD")[3];
+            y = rows[i + 1].getElementsByTagName("TD")[3];
+            //check if the two rows should switch place:
+            if (Number(x.innerHTML) < Number(y.innerHTML)) {
+                //if so, mark as a switch and break the loop:
+                shouldSwitch = true;
+                break;
+            }
+        }
+        if (shouldSwitch) {
+            /*If a switch has been marked, make the switch and mark that a switch has been done:*/
+            rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+            //console.log("Switched " + )
+            switching = true;
+        }
+    }
+
     switching = true;
     while (switching) {
         switching = false;
@@ -193,7 +218,7 @@ socket.on('updatePlayers', (backendPlayers) => {
     killEl.innerText = players[ego].kills
     deathEl.innerText = players[ego].deaths
     healEl.innerHTML = "<span style='color: lime'>" + players[ego].health + "</span> | <span style='color: #5e90da'>" + players[ego].shield + "</span>"
-    typeEl.innerText = typeNames[players[ego].type]
+    typeEl.innerText = types[players[ego].type].name
 
     tBodyEl.innerHTML = ""
     for (const id in players) {
@@ -205,7 +230,6 @@ socket.on('updatePlayers', (backendPlayers) => {
         const deaths = document.createElement("td")
         const dmg = document.createElement("td")
 
-        //console.log("Table entry: " + p.name + " k: " + p.kills + " d: " + p.deaths)
         name.innerText = p.name
         row.appendChild(name)
         kills.innerText = p.kills
@@ -269,6 +293,11 @@ socket.on('setObstacles', (backendObstacles) => {
     obstacles = backendObstacles
 })
 
+// set types
+socket.on('setTypes', (backendTypes) => {
+    types = backendTypes
+})
+
 // log entry
 socket.on('logEntry', (text) => {
     let newLog = document.createElement("p")
@@ -309,9 +338,11 @@ socket.on('tps', (tps => {
 let animationId
 function animate() {
     animationId = requestAnimationFrame(animate)
+    c.beginPath()
     c.fillStyle = 'rgba(0, 0, 0, 1)'
     c.fillRect(0, 0, canvas.width, canvas.height)
     c.strokeStyle = 'rgb(30, 30, 30)'
+    c.lineWidth = 1
     for (let i = 0; i < (map.width+50)*devicePxRat; i+=50*devicePxRat) {
         c.moveTo(i-cam.x, 0-cam.y)
         c.lineTo(i-cam.x, map.height*devicePxRat-cam.y)
@@ -321,6 +352,12 @@ function animate() {
         c.lineTo(map.width*devicePxRat-cam.x, i-cam.y)
     }
     c.stroke()
+    for (const id in obstacles) {
+        const obst = obstacles[id]
+        c.fillStyle = `rgba(50, 50, 50, 1)`
+        c.fillRect(obst.start.x*devicePxRat-cam.x, obst.start.y*devicePxRat-cam.y, obst.end.x*devicePxRat, obst.end.y*devicePxRat)
+    }
+    c.closePath()
 
     try {
         cam = {
@@ -361,11 +398,6 @@ function animate() {
     }
     socket.emit('movement', movement)
 
-    for (const id in obstacles) {
-        const obst = obstacles[id]
-        c.fillStyle = "rgba(255, 0, 0, 0.2)"
-        c.fillRect(obst.start.x*devicePxRat-cam.x, obst.start.y*devicePxRat-cam.y, obst.end.x*devicePxRat, obst.end.y*devicePxRat)
-    }
     for (const id in items) {
         const item = items[id]
         let color
@@ -386,6 +418,15 @@ function animate() {
         const pr = projectiles[id]
         pr.draw()
     }
+    // draw barrel
+    c.beginPath()
+    c.strokeStyle = "grey"
+    c.lineWidth = types[players[ego].type].barrel.w
+    c.moveTo(innerWidth/2, innerHeight/2)
+    c.lineTo(innerWidth/2+(Math.cos(mouseAngle)*types[players[ego].type].barrel.l), innerHeight/2+(Math.sin(mouseAngle)*types[players[ego].type].barrel.l))
+    c.stroke()
+    c.closePath()
+
     for (const id in players) {
         const p = players[id]
         p.draw()

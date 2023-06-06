@@ -19,7 +19,7 @@ backend.get('/', (req, res) => {
 })
 
 // speed: movement speed per tick
-let speed = 4
+let speed = 3
 // map size
 const map = {
     height: 2000,
@@ -441,7 +441,11 @@ const types = {
         distance: 1500,
         radius: 7,
         cooldown: 1000/2.75, // 363
-        critical: 5
+        critical: 5,
+        barrel: {
+            l: 45,
+            w: 21
+        }
     },
     2: {
         name: "Sprayer",
@@ -450,7 +454,11 @@ const types = {
         distance: 500,
         radius: 12,
         cooldown: 100,
-        critical: 0
+        critical: 0,
+        barrel: {
+            l: 40,
+            w: 36
+        }
     },
     3: {
         name: "Sniper",
@@ -459,7 +467,11 @@ const types = {
         distance: 10000,
         radius: 3,
         cooldown: 800,
-        critical: 10
+        critical: 10,
+        barrel: {
+            l: 65,
+            w: 15
+        }
     }
 }
 
@@ -535,8 +547,9 @@ function deadPlayer(dead) {
     }
     console.log(players[dead].name + " player was killed by " + killerName)
     players[dead].deaths += 1
-    players[dead].x = Math.round(map.width*Math.random())
-    players[dead].y = Math.round(map.height*Math.random())
+    const cords = getNiceCords(25)
+    players[dead].x = cords.x
+    players[dead].y = cords.y
     players[dead].lastShootTime = 0
     players[dead].health = 100
     players[dead].shield = 0
@@ -559,13 +572,34 @@ function inObstacle(x, y, radius) {
     return false
 }
 
+// get nice start cords
+function getNiceCords(radius) {
+    let x = Math.round(map.width*Math.random())
+    let y = Math.round(map.height*Math.random())
+
+    while (inObstacle(x, y, radius)) {
+        if (x < map.width/2) {
+            x += 100
+        } else {
+            x -= 100
+        }
+        if (y < map.height/2) {
+            y += 100
+        } else {
+            y -= 100
+        }
+    }
+    return {x, y}
+}
+
 // initialize connection to socket
 io.on('connection', (socket) => {
     console.log("a user connected")
     // create players entry for new player
+    const cords = getNiceCords(25)
     players[socket.id] = {
-        x: Math.round(map.width*Math.random()),
-        y: Math.round(map.height*Math.random()),
+        x: cords.x,
+        y: cords.y,
         vel: {
             x: 0,
             y: 0
@@ -583,14 +617,16 @@ io.on('connection', (socket) => {
         dmgDealt: 0
     }
     // update player objects on clients
-    io.emit('updatePlayers', players)
+    socket.emit('setTypes', types)
     socket.emit('setObstacles', obstacles)
+    io.emit('updatePlayers', players)
 
     // update velocity on player movement
     socket.on('movement', (movement) => {
-        if (players[socket.id].name !== movement.name) {
+        if (players[socket.id].name !== movement.name && movement.name.match(/^[a-zA-Z0-9]+$/)) {
             console.log("Changed name of " + movement.name)
             players[socket.id].name = movement.name
+            io.emit('logEntry', movement.name + " joined the game")
             io.emit('updatePlayers', players)
         }
         if (movement.left ^ movement.right) {
@@ -695,29 +731,36 @@ function update() {
         }
 
         let factor = 1
-        if (inObstacle(players[id].x, players[id].y, 20)) {
-            factor = 0.75
+        let obstacleX = false
+        let obstacleY = false
+        if (inObstacle(players[id].x + players[id].vel.x, players[id].y, 15)) {
+            //factor = 0.75
+            obstacleX = true
+        }
+        if (inObstacle(players[id].x, players[id].y + players[id].vel.y, 15)) {
+            //factor = 0.75
+            obstacleY = true
         }
 
         // x position
-        if (players[id].x + players[id].vel.x + 20 < map.width && players[id].x + players[id].vel.x - 20 > 0) {
+        if (players[id].x + players[id].vel.x + 20 < map.width && players[id].x + players[id].vel.x - 20 > 0 && !obstacleX) {
             players[id].x = players[id].x + players[id].vel.x*factor
         }
-        while (players[id].x + players[id].vel.x + 20 >= map.width) {
+        while (players[id].x + 20 >= map.width) {
             players[id].x -= 10
         }
-        while (players[id].x + players[id].vel.x - 20 <= 0) {
+        while (players[id].x - 20 <= 0) {
             players[id].x += 10
         }
 
         // y position
-        if (players[id].y + players[id].vel.y + 20 < map.height && players[id].y + players[id].vel.y - 20 > 0) {
+        if (players[id].y + players[id].vel.y + 20 < map.height && players[id].y + players[id].vel.y - 20 > 0 && !obstacleY) {
             players[id].y = players[id].y + players[id].vel.y*factor
         }
-        while (players[id].y + players[id].vel.y + 20 >= map.height) {
+        while (players[id].y + 20 >= map.height) {
             players[id].y -= 10
         }
-        while (players[id].y + players[id].vel.y - 20 <= 0) {
+        while (players[id].y - 20 <= 0) {
             players[id].y += 10
         }
 
@@ -769,6 +812,15 @@ function update() {
             }
         }
     }
+    if (items.length < 5) {
+        const cords = getNiceCords()
+        items.push({
+            x: cords.x,
+            y: cords.y,
+            type: Math.floor(3*Math.random())
+        })
+        io.emit('updateItems', items)
+    }
     io.emit('updateCords', players)
     io.emit('updateItems', items)
     io.emit('updateProj', projectiles)
@@ -778,39 +830,31 @@ function update() {
     lastUpdateTime = end
     setTimeout(function () {
         update()
-    }, 15)
+    }, 12)
 }
 
-async function oneSecTick() {
-    for (const id in obstacles) {
-        const obst = obstacles[id]
-        for (const player in players) {
-            const p = players[player]
-            if (p.x + 10 > obst.start.x &&
-                p.y + 10 > obst.start.y &&
-                p.x - 10 < obst.start.x + obst.end.x &&
-                p.y - 10 < obst.start.y + obst.end.y) {
-                // player is in obstacle
-                dmgPlayer(player, 10, undefined, true) // zero damage for tests
-            }
-        }
-    }
-    if (items.length < 5) {
-        items.push({
-            x: map.width*Math.random(),
-            y: map.height*Math.random(),
-            type: Math.floor(3*Math.random())
-        })
-        io.emit('updateItems', items)
-    }
-    setTimeout(function () {
-        oneSecTick()
-    }, 1000)
-}
+// async function oneSecTick() {
+//     for (const id in obstacles) {
+//         const obst = obstacles[id]
+//         for (const player in players) {
+//             const p = players[player]
+//             if (p.x + 10 > obst.start.x &&
+//                 p.y + 10 > obst.start.y &&
+//                 p.x - 10 < obst.start.x + obst.end.x &&
+//                 p.y - 10 < obst.start.y + obst.end.y) {
+//                 // player is in obstacle
+//                 dmgPlayer(player, 10, undefined, true) // zero damage for tests
+//             }
+//         }
+//     }
+//     setTimeout(function () {
+//         oneSecTick()
+//     }, 1000)
+// }
 
 server.listen(port, () => {
     console.log(`App listening on port ${port}`)
 })
 
-oneSecTick().then()
+// oneSecTick().then()
 update()
