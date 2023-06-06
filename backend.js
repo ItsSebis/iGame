@@ -813,7 +813,7 @@ function update() {
         }
     }
     if (items.length < 5) {
-        const cords = getNiceCords()
+        const cords = getNiceCords(radius)
         items.push({
             x: cords.x,
             y: cords.y,
