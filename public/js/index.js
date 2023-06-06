@@ -422,7 +422,7 @@ function animate() {
     c.beginPath()
     c.strokeStyle = "grey"
     c.lineWidth = types[players[ego].type].barrel.w
-    c.moveTo(innerWidth/2, innerHeight/2)
+    c.moveTo(innerWidth*devicePxRat/2, innerHeight*devicePxRat/2)
     c.lineTo(innerWidth/2+(Math.cos(mouseAngle)*types[players[ego].type].barrel.l), innerHeight/2+(Math.sin(mouseAngle)*types[players[ego].type].barrel.l))
     c.stroke()
     c.closePath()
