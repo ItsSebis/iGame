@@ -1,5 +1,5 @@
 class Player {
-    constructor({id, x, y, color, name, type, health, level, kills, deaths, shield, lastHitTime}) {
+    constructor({id, x, y, color, name, type, health, level, kills, deaths, shield, lastHitTime, dmgDealt}) {
         this.id = id
         this.x = x
         this.y = y
@@ -13,6 +13,7 @@ class Player {
         this.health = health
         this.shield = shield
         this.lastHitTime = lastHitTime
+        this.dmgDealt = dmgDealt
     }
 
     draw() {

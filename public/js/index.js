@@ -161,7 +161,8 @@ socket.on('updatePlayers', (backendPlayers) => {
                 type: bP.type,
                 health: bP.health,
                 shield: bP.shield,
-                lastHitTime: bP.lastHitTime
+                lastHitTime: bP.lastHitTime,
+                dmgDealt: bP.dmgDealt
             })
         } else {
             players[id].name = bP.name
@@ -172,6 +173,7 @@ socket.on('updatePlayers', (backendPlayers) => {
             players[id].health = bP.health
             players[id].shield = bP.shield
             players[id].lastHitTime = bP.lastHitTime
+            players[id].dmgDealt = bP.dmgDealt
         }
     }
     for (const id in players) {
@@ -201,6 +203,7 @@ socket.on('updatePlayers', (backendPlayers) => {
         const name = document.createElement("td")
         const kills = document.createElement("td")
         const deaths = document.createElement("td")
+        const dmg = document.createElement("td")
 
         //console.log("Table entry: " + p.name + " k: " + p.kills + " d: " + p.deaths)
         name.innerText = p.name
@@ -209,6 +212,8 @@ socket.on('updatePlayers', (backendPlayers) => {
         row.appendChild(kills)
         deaths.innerText = p.deaths
         row.appendChild(deaths)
+        dmg.innerText = p.dmgDealt
+        row.appendChild(dmg)
 
         tBodyEl.appendChild(row)
     }

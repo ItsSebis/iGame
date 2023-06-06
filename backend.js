@@ -497,6 +497,7 @@ function dmgPlayer(target, dmg, attacker, venom) {
     if (attacker !== undefined) {
         console.log(dmg + " damage to " + players[target].name)
         players[target].lastDamager = attacker
+        players[attacker].dmgDealt += dmg
     }
     if (players[target].shield > 0 && !venom) {
         if (players[target].shield > dmg) {
@@ -578,7 +579,8 @@ io.on('connection', (socket) => {
         deaths: 0,
         type: 1,
         health: 100,
-        shield: 50
+        shield: 50,
+        dmgDealt: 0
     }
     // update player objects on clients
     io.emit('updatePlayers', players)
