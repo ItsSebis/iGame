@@ -68,6 +68,7 @@ const players = {}
 const projectiles = {}
 let items = []
 let obstacles = []
+let explosions = []
 
 // shooting type names
 let types = {
@@ -87,7 +88,7 @@ function avg(array) {
 
 // sort standings table
 function sortTable() {
-    let table, rows, switching, i, x, y, a, b, shouldSwitch;
+    let table, rows, switching, i, x, y, shouldSwitch;
     table = document.getElementById("standings");
     switching = true;
     while (switching) {
@@ -188,7 +189,8 @@ socket.on('updatePlayers', (backendPlayers) => {
                 health: bP.health,
                 shield: bP.shield,
                 lastHitTime: bP.lastHitTime,
-                dmgDealt: bP.dmgDealt
+                dmgDealt: bP.dmgDealt,
+                angle: bP.angle
             })
         } else {
             players[id].name = bP.name
@@ -200,6 +202,7 @@ socket.on('updatePlayers', (backendPlayers) => {
             players[id].shield = bP.shield
             players[id].lastHitTime = bP.lastHitTime
             players[id].dmgDealt = bP.dmgDealt
+            players[id].angle = bP.angle
         }
     }
     for (const id in players) {
@@ -208,6 +211,7 @@ socket.on('updatePlayers', (backendPlayers) => {
         }
     }
     const movement = {
+        angle: mouseAngle,
         name: ign,
         left: aPressed,
         right: dPressed,
@@ -252,6 +256,7 @@ socket.on('updateCords', (bCords) => {
         players[id].name = bCords[id].name
         players[id].x = bCords[id].x
         players[id].y = bCords[id].y
+        players[id].angle = bCords[id].angle
     }
     xEl.innerText = players[ego].x
     yEl.innerText = players[ego].y
@@ -297,6 +302,7 @@ socket.on('setObstacles', (backendObstacles) => {
 // set types
 socket.on('setTypes', (backendTypes) => {
     types = backendTypes
+    typeSwitcher.innerHTML = ""
     for (const id in types) {
         const button = document.createElement("button")
         button.innerHTML = types[id].symbol + " " + types[id].name
@@ -304,10 +310,9 @@ socket.on('setTypes', (backendTypes) => {
         button.setAttribute("typeId", id)
         button.setAttribute("id", "type"+id)
         button.classList.add("typeSelect")
-        button.onclick(function () {
-            socket.emit('selectType', id)
-        })
+        button.onclick = function () {socket.emit('selectType', id)}
         typeSwitcher.appendChild(button)
+        typeSwitcher.appendChild(document.createElement("br"))
     }
 })
 
@@ -323,8 +328,14 @@ socket.on('logEntry', (text) => {
 
 // registered shot
 socket.on('shot', () => {
-    const snd = new Audio("sounds/scar-shoot.wav")
+    const snd = new Audio(`sounds/shots/${players[ego].type}.wav`)
     snd.play().then()
+})
+
+// explosion
+socket.on('explosion', (explosion) => {
+    new Audio("sounds/explosion.wav").play().then()
+    explosions.push({x: explosion.x, y: explosion.y, power: explosion.power, a: 1})
 })
 
 // damage dealt
@@ -352,8 +363,13 @@ let animationId
 function animate() {
     animationId = requestAnimationFrame(animate)
     c.beginPath()
-    c.fillStyle = 'rgba(0, 0, 0, 1)'
+    c.fillStyle = 'rgb(50, 50, 50)'
     c.fillRect(0, 0, canvas.width, canvas.height)
+    c.closePath()
+    c.beginPath()
+    c.fillStyle = 'rgba(0, 0, 0, 1)'
+    c.fillRect(0-cam.x, 0-cam.y, map.width, map.height)
+
     c.strokeStyle = 'rgb(30, 30, 30)'
     c.lineWidth = 1
     for (let i = 0; i < (map.width+50)*devicePxRat; i+=50*devicePxRat) {
@@ -371,13 +387,24 @@ function animate() {
         c.fillRect(obst.start.x*devicePxRat-cam.x, obst.start.y*devicePxRat-cam.y, obst.end.x*devicePxRat, obst.end.y*devicePxRat)
     }
     c.closePath()
+    for (const id in explosions) {
+        c.beginPath()
+        c.fillStyle = `rgba(150, 75, 25, ${explosions[id].a})`
+        c.arc(explosions[id].x-cam.x, explosions[id].y-cam.y, explosions[id].power*50, 0, Math.PI*2, false)
+        c.fill()
+        c.closePath()
+        explosions[id].a -= 0.05
+        if (explosions[id].a <= 0) {
+            explosions.splice(id, 1)
+        }
+    }
 
     try {
         cam = {
             x: players[ego].x * devicePxRat - innerWidth * devicePxRat / 2,
             y: players[ego].y * devicePxRat - innerHeight * devicePxRat / 2
         }
-        if (Date.now() - players[ego].lastHitTime < 10000) 
+        if (Date.now() - players[ego].lastHitTime < 10000) {
             for (const id in types) {
                 const button = document.querySelector("#type"+id) 
                 button.setAttribute("disabled", "disabled")
@@ -393,7 +420,7 @@ function animate() {
             for (const id in types) {
                 const button = document.querySelector("#type"+id) 
                 button.removeAttribute("disabled")
-                button.innerText = types[id].symbol + " " + types[id].name
+                button.innerHTML = types[id].symbol + " " + types[id].name
             }
         }
     } catch (e) {}
@@ -404,6 +431,7 @@ function animate() {
     pCEl.innerText = Object.keys(players).length
     prCEl.innerText = Object.keys(projectiles).length
     const movement = {
+        angle: mouseAngle,
         name: ign,
         left: aPressed,
         right: dPressed,
@@ -436,13 +464,6 @@ function animate() {
         pr.draw()
     }
     // draw barrel
-    c.beginPath()
-    c.strokeStyle = "grey"
-    c.lineWidth = types[players[ego].type].barrel.w*devicePxRat
-    c.moveTo(innerWidth*devicePxRat/2, innerHeight*devicePxRat/2)
-    c.lineTo(innerWidth*devicePxRat/2+(Math.cos(mouseAngle)*types[players[ego].type].barrel.l*devicePxRat), innerHeight*devicePxRat/2+(Math.sin(mouseAngle)*types[players[ego].type].barrel.l*devicePxRat))
-    c.stroke()
-    c.closePath()
 
     for (const id in players) {
         const p = players[id]

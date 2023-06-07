@@ -436,45 +436,84 @@ const obstacles = [
 const types = {
     1: {
         name: "Shooter",
-        dmg: 15,
+        dmg: 20,
+        amount: 1,
+        error: 0.05,
         speed: 18,
         distance: 1500,
-        radius: 7,
-        cooldown: 1000/2.75, // 363
-        critical: 5,
+        radius: 8,
+        cooldown: 1000/5.5, // 181
+        critical: 7,
         barrel: {
             l: 45,
             w: 21
         },
-        symbol: ""
+        symbol: "<i class='bx bx-target-lock'></i>"
     },
     2: {
         name: "Sprayer",
         dmg: 8,
+        amount: 1,
+        error: 0.7,
         speed: 15,
-        distance: 500,
-        radius: 12,
-        cooldown: 100,
-        critical: 0,
+        distance: 700,
+        radius: 11,
+        cooldown: 80,
+        critical: 20,
         barrel: {
             l: 40,
             w: 36
         },
-        symbol: ""
+        symbol: "<i class='bx bx-spray-can' ></i>"
     },
     3: {
         name: "Sniper",
-        dmg: 35,
-        speed: 45,
+        dmg: 50,
+        amount: 1,
+        error: 0,
+        speed: 35,
         distance: 10000,
-        radius: 3,
-        cooldown: 800,
-        critical: 10,
+        radius: 5,
+        cooldown: 850,
+        critical: 15,
         barrel: {
             l: 65,
             w: 15
         },
-        symbol: ""
+        symbol: "<i class='bx bx-bullseye' ></i>"
+    },
+    4: {
+        name: "Shotgun",
+        dmg: 11,
+        amount: 8,
+        error: 0.5,
+        speed: 25,
+        distance: 400,
+        radius: 4,
+        cooldown: 1000/0.7,
+        critical: 30,
+        barrel: {
+            l: 50,
+            w: 25
+        },
+        symbol: "<i class='bx bx-wifi'></i>"
+    },
+    5: {
+        name: "RPG",
+        dmg: 0,
+        amount: 1,
+        error: 0,
+        explode: 2,
+        speed: 12,
+        distance: 5000,
+        radius: 18,
+        cooldown: 1000/0.75,
+        critical: 0,
+        barrel: {
+            l: 60,
+            w: 30
+        },
+        symbol: "<i class='bx bx-rocket' ></i>"
     }
 }
 
@@ -507,12 +546,38 @@ function healPlayer(target, heal, overflow) {
     }
 }
 
+// explosion occurred on map
+function explosion(x, y, power, attacker) {
+    for (const id in players) {
+        const dist = Math.hypot(x - players[id].x, y - players[id].y)
+
+        if (dist - power * 50 - 20 < 1) {
+            // in explosion
+            console.log(dist - power * 50 - 20)
+            dmgPlayer(id, 20*power, attacker)
+            if (id !== attacker) {
+                io.to(id).emit('explosion', {x: x, y: y, power: power})
+            }
+        }
+        console.log(dist)
+    }
+    if (attacker !== undefined) {
+        io.to(attacker).emit('explosion', {x: x, y: y, power: power})
+    }
+}
+
 // player damage
 function dmgPlayer(target, dmg, attacker, venom) {
+    if (dmg <= 0) {
+        return
+    }
     if (attacker !== undefined) {
         console.log(dmg + " damage to " + players[target].name)
         players[target].lastDamager = attacker
-        players[attacker].dmgDealt += dmg
+        if (target !== attacker) {
+            players[attacker].lastHitTime = Date.now()
+            players[attacker].dmgDealt += dmg
+        }
     }
     if (players[target].shield > 0 && !venom) {
         if (players[target].shield > dmg) {
@@ -526,7 +591,6 @@ function dmgPlayer(target, dmg, attacker, venom) {
     } else {
         players[target].health -= dmg
     }
-    io.to(target).emit('damageDealt', false)
     if (players[target].health <= 0) {
         deadPlayer(target, attacker)
     }
@@ -544,9 +608,11 @@ function deadPlayer(dead) {
         let killer =  players[dead].lastDamager
         killerName = players[killer].name
         killerType = "(" + types[players[killer].type].name + ")"
-        players[killer].kills += 1
-        healPlayer(killer, 25, true)
-        io.to(killer).emit('kill')
+        if (dead !== killer) {
+            players[killer].kills += 1
+            healPlayer(killer, 25, true)
+            io.to(killer).emit('kill')
+        }
     }
     console.log(players[dead].name + " player was killed by " + killerName)
     players[dead].deaths += 1
@@ -617,7 +683,8 @@ io.on('connection', (socket) => {
         type: 1,
         health: 100,
         shield: 50,
-        dmgDealt: 0
+        dmgDealt: 0,
+        angle: 0
     }
     // update player objects on clients
     socket.emit('setTypes', types)
@@ -650,28 +717,38 @@ io.on('connection', (socket) => {
         } else {
             players[socket.id].vel.y = 0
         }
+        players[socket.id].angle = movement.angle
     })
 
     socket.on('shoot', (angle) => {
         const type = types[players[socket.id].type]
         if (Date.now()-players[socket.id].lastShootTime >= type.cooldown) {
-            projectiles.push({
-                shooter: socket.id,
-                angle: angle,
-                type: players[socket.id].type,
-                x: players[socket.id].x,
-                y: players[socket.id].y,
-                vel: {
-                    x: Math.cos(angle),
-                    y: Math.sin(angle)
-                },
-                origin: {
+            for (let i = 0; i < type.amount; i++) {
+                let shotError = Math.random()*type.error-type.error/2
+                let finalAngle = angle+shotError
+                if (finalAngle < 0-Math.PI) {
+                    finalAngle += 2*Math.PI
+                } else if (finalAngle > Math.PI) {
+                    finalAngle -= 2* Math.PI
+                }
+                projectiles.push({
+                    shooter: socket.id,
+                    angle: angle,
+                    type: players[socket.id].type,
                     x: players[socket.id].x,
-                    y: players[socket.id].y
-                },
-                radius: type.radius,
-                distance: type.distance
-            })
+                    y: players[socket.id].y,
+                    vel: {
+                        x: Math.cos(finalAngle),
+                        y: Math.sin(finalAngle)
+                    },
+                    origin: {
+                        x: players[socket.id].x,
+                        y: players[socket.id].y
+                    },
+                    radius: type.radius,
+                    distance: type.distance
+                })
+            }
             players[socket.id].lastShootTime = Date.now()
             io.to(socket.id).emit('shot')
         }
@@ -708,6 +785,9 @@ function update() {
             const travel = Math.sqrt(Math.pow(projectiles[id].x-projectiles[id].origin.x, 2) +
                 Math.pow(projectiles[id].y-projectiles[id].origin.y, 2))
             if (inObstacle(projectiles[id].x, projectiles[id].y, type.radius)) {
+                if (types[projectiles[id].type].explode !== undefined) {
+                    projectiles[id].distance = 0
+                }
                 projectiles[id].distance -= 8000
             }
             for (const pid in projectiles) {
@@ -722,6 +802,9 @@ function update() {
             }
             if (projectiles[id].x > map.width || projectiles[id].x < 0 || projectiles[id].y > map.height ||
                 projectiles[id].y < 0 || travel > projectiles[id].distance) {
+                if (types[projectiles[id].type].explode !== undefined) {
+                    explosion(projectiles[id].x, projectiles[id].y, types[projectiles[id].type].explode, projectiles[id].shooter)
+                }
                 projectiles.splice(id, 1)
             }
         } catch (e) {
@@ -776,7 +859,6 @@ function update() {
 
             if (dist - 20 - proj.radius < 1) {
                 // projectile hit
-                players[proj.shooter].lastHitTime = Date.now()
                 let dmg = Math.round(types[proj.type].dmg/(types[proj.type].distance/proj.distance))
                 const random = Math.floor(Math.random()*types[proj.type].critical)+1
                 io.to(proj.shooter).emit('damageDealt', (random === types[proj.type].critical))
@@ -784,6 +866,9 @@ function update() {
                     dmg *= 2
                 }
                 dmgPlayer(id, dmg, proj.shooter, false)
+                if (types[proj.type].explode !== undefined) {
+                    projectiles[pid].distance = 0
+                }
                 projectiles[pid].distance -= 3000
             }
         }

@@ -24,12 +24,8 @@ addEventListener('keydown', (event) => {
         wPressed = true
     } else if (event.key.toLowerCase() === "s") {
         sPressed = true
-    } else if (event.key === "1") {
-        socket.emit('selectType', 1)
-    } else if (event.key === "2") {
-        socket.emit('selectType', 2)
-    } else if (event.key === "3") {
-        socket.emit('selectType', 3)
+    } else if (event.key.match(/^[1-9]+$/) && types[Number(event.key)] !== undefined) {
+        socket.emit('selectType', Number(event.key))
     } else if (event.key.toLowerCase() === "e") {
         mousedown = !mousedown
     }

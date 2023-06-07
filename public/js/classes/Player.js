@@ -1,5 +1,5 @@
 class Player {
-    constructor({id, x, y, color, name, type, health, level, kills, deaths, shield, lastHitTime, dmgDealt}) {
+    constructor({id, x, y, color, name, type, health, level, kills, deaths, shield, lastHitTime, dmgDealt, angle}) {
         this.id = id
         this.x = x
         this.y = y
@@ -14,9 +14,17 @@ class Player {
         this.shield = shield
         this.lastHitTime = lastHitTime
         this.dmgDealt = dmgDealt
+        this.angle = angle
     }
 
     draw() {
+        c.beginPath()
+        c.strokeStyle = "grey"
+        c.lineWidth = types[this.type].barrel.w*devicePxRat
+        c.moveTo(this.x*devicePxRat-cam.x, this.y*devicePxRat-cam.y)
+        c.lineTo(this.x*devicePxRat-cam.x+(Math.cos(this.angle)*types[this.type].barrel.l*devicePxRat), this.y*devicePxRat-cam.y+(Math.sin(this.angle)*types[this.type].barrel.l*devicePxRat))
+        c.stroke()
+        c.closePath()
         c.beginPath()
         c.arc(this.x*devicePxRat-cam.x, this.y*devicePxRat-cam.y, this.radius, -1 * Math.PI, Math.PI, false)
         c.fillStyle = this.color
