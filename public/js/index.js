@@ -389,7 +389,7 @@ function animate() {
             //selShot.innerText = Math.round((10000 - (Date.now() - players[ego].lastHitTime))/100)/10
             //selSpray.innerText = Math.round((10000 - (Date.now() - players[ego].lastHitTime))/100)/10
             //selSnipe.innerText = Math.round((10000 - (Date.now() - players[ego].lastHitTime))/100)/10
-        } else if (typeSwitch.firstElementChild.hasAttribute("disabled")) {
+        } else {
             for (const id in types) {
                 const button = document.querySelector("#type"+id) 
                 button.removeAttribute("disabled")
