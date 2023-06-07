@@ -18,6 +18,7 @@ canvas.width = innerWidth * devicePxRat
 canvas.height = innerHeight * devicePxRat
 
 // gui elements
+const typeSwitcher = document.querySelector("#typeSwitcher")
 const tBodyEl = document.querySelector('#standBody')
 const selShot = document.querySelector('#selectShot')
 const selSnipe = document.querySelector('#selectSnipe')
@@ -296,6 +297,18 @@ socket.on('setObstacles', (backendObstacles) => {
 // set types
 socket.on('setTypes', (backendTypes) => {
     types = backendTypes
+    for (const id in types) {
+        const button = document.createElement("button")
+        button.innerHTML = types[id].symbol + " " + types[id].name
+        
+        button.setAttribute("typeId", id)
+        button.setAttribute("id", "type"+id)
+        button.classList.add("typeSelect")
+        button.onclick(function () {
+            socket.emit('selectType', id)
+        })
+        typeSwitcher.appendChild(button)
+    }
 })
 
 // log entry
@@ -364,20 +377,24 @@ function animate() {
             x: players[ego].x * devicePxRat - innerWidth * devicePxRat / 2,
             y: players[ego].y * devicePxRat - innerHeight * devicePxRat / 2
         }
-        if (Date.now() - players[ego].lastHitTime < 10000) {
-            selShot.setAttribute("disabled", "disabled")
-            selSpray.setAttribute("disabled", "disabled")
-            selSnipe.setAttribute("disabled", "disabled")
-            selShot.innerText = Math.round((10000 - (Date.now() - players[ego].lastHitTime))/100)/10
-            selSpray.innerText = Math.round((10000 - (Date.now() - players[ego].lastHitTime))/100)/10
-            selSnipe.innerText = Math.round((10000 - (Date.now() - players[ego].lastHitTime))/100)/10
-        } else if (selSpray.hasAttribute("disabled")) {
-            selShot.removeAttribute("disabled")
-            selSpray.removeAttribute("disabled")
-            selSnipe.removeAttribute("disabled")
-            selShot.innerHTML =  "<i class='bx bx-target-lock'></i> Shooter"
-            selSpray.innerHTML = "<i class='bx bx-wifi'></i> Sprayer"
-            selSnipe.innerHTML = "<i class='bx bx-bullseye' ></i> Sniper"
+        if (Date.now() - players[ego].lastHitTime < 10000) 
+            for (const id in types) {
+                const button = document.querySelector("#type"+id) 
+                button.setAttribute("disabled", "disabled")
+                button.innerText = Math.round((10000 - (Date.now() - players[ego].lastHitTime))/100)/10
+            }
+            //selShot.setAttribute("disabled", "disabled")
+            //selSpray.setAttribute("disabled", "disabled")
+            //selSnipe.setAttribute("disabled", "disabled")
+            //selShot.innerText = Math.round((10000 - (Date.now() - players[ego].lastHitTime))/100)/10
+            //selSpray.innerText = Math.round((10000 - (Date.now() - players[ego].lastHitTime))/100)/10
+            //selSnipe.innerText = Math.round((10000 - (Date.now() - players[ego].lastHitTime))/100)/10
+        } else if (typeSwitch.firstElementChild.hasAttribute("disabled")) {
+            for (const id in types) {
+                const button = document.querySelector("#type"+id) 
+                button.removeAttribute("disabled")
+                button.innerText = Math.round((10000 - (Date.now() - players[ego].lastHitTime))/100)/10
+            }
         }
     } catch (e) {}
     mEl.innerText = mouseAngle
@@ -452,15 +469,15 @@ async function updateTPS() {
 }
 
 // set onclick functions for type selectors
-selShot.onclick = function () {
-    socket.emit('selectType', 1)
-}
-selSpray.onclick = function () {
-    socket.emit('selectType', 2)
-}
-selSnipe.onclick = function () {
-    socket.emit('selectType', 3)
-}
+//selShot.onclick = function () {
+//    socket.emit('selectType', 1)
+//}
+//selSpray.onclick = function () {
+//    socket.emit('selectType', 2)
+//}
+//selSnipe.onclick = function () {
+//    socket.emit('selectType', 3)
+//}
 
 // call loops
 updateTPS().then()

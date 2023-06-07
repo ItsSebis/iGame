@@ -445,7 +445,8 @@ const types = {
         barrel: {
             l: 45,
             w: 21
-        }
+        },
+        symbol: ""
     },
     2: {
         name: "Sprayer",
@@ -458,7 +459,8 @@ const types = {
         barrel: {
             l: 40,
             w: 36
-        }
+        },
+        symbol: ""
     },
     3: {
         name: "Sniper",
@@ -471,7 +473,8 @@ const types = {
         barrel: {
             l: 65,
             w: 15
-        }
+        },
+        symbol: ""
     }
 }
 
