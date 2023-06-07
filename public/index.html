@@ -119,7 +119,7 @@
     const queryString = window.location.search;
     const urlParams = new URLSearchParams(queryString);
     let ign = urlParams.get("name")
-    if (ign === undefined || ign === null) {
+    while (ign === undefined || ign === null || !ign.match(/^[a-zA-Z0-9]+$/) || ign.length > 50) {
         ign = prompt("Please give a nickname")
     }
 </script>

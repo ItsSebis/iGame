@@ -693,11 +693,14 @@ io.on('connection', (socket) => {
 
     // update velocity on player movement
     socket.on('movement', (movement) => {
-        if (players[socket.id].name !== movement.name && movement.name.match(/^[a-zA-Z0-9]+$/)) {
+        if (players[socket.id].name === null && movement.name.match(/^[a-zA-Z0-9]+$/) && movement.name.length <= 50) {
             console.log("Changed name of " + movement.name)
             players[socket.id].name = movement.name
             io.emit('logEntry', movement.name + " joined the game")
             io.emit('updatePlayers', players)
+        }
+        if (players[socket.id].name === null) {
+            return
         }
         if (movement.left ^ movement.right) {
             if (movement.left) {

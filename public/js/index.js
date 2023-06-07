@@ -219,7 +219,7 @@ socket.on('updatePlayers', (backendPlayers) => {
         down: sPressed
     }
     socket.emit('movement', movement)
-    nameEl.innerText = ign
+    nameEl.innerText = players[ego].name
     killEl.innerText = players[ego].kills
     deathEl.innerText = players[ego].deaths
     healEl.innerHTML = "<span style='color: lime'>" + players[ego].health + "</span> | <span style='color: #5e90da'>" + players[ego].shield + "</span>"
