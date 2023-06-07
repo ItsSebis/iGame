@@ -393,7 +393,7 @@ function animate() {
             for (const id in types) {
                 const button = document.querySelector("#type"+id) 
                 button.removeAttribute("disabled")
-                button.innerText = Math.round((10000 - (Date.now() - players[ego].lastHitTime))/100)/10
+                button.innerText = types[id].symbol + " " + types[id].name
             }
         }
     } catch (e) {}
