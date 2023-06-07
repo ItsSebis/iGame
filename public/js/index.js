@@ -368,7 +368,7 @@ function animate() {
     c.closePath()
     c.beginPath()
     c.fillStyle = 'rgba(0, 0, 0, 1)'
-    c.fillRect(0-cam.x, 0-cam.y, map.width, map.height)
+    c.fillRect(0-cam.x, 0-cam.y, map.width*devicePxRat, map.height*devicePxRat)
 
     c.strokeStyle = 'rgb(30, 30, 30)'
     c.lineWidth = 1
@@ -390,7 +390,7 @@ function animate() {
     for (const id in explosions) {
         c.beginPath()
         c.fillStyle = `rgba(150, 75, 25, ${explosions[id].a})`
-        c.arc(explosions[id].x-cam.x, explosions[id].y-cam.y, explosions[id].power*50, 0, Math.PI*2, false)
+        c.arc(explosions[id].x*devicePxRat-cam.x, explosions[id].y*devicePxRat-cam.y, explosions[id].power*50, 0, Math.PI*2, false)
         c.fill()
         c.closePath()
         explosions[id].a -= 0.05
