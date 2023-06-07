@@ -390,7 +390,7 @@ function animate() {
     for (const id in explosions) {
         c.beginPath()
         c.fillStyle = `rgba(150, 75, 25, ${explosions[id].a})`
-        c.arc(explosions[id].x*devicePxRat-cam.x, explosions[id].y*devicePxRat-cam.y, explosions[id].power*50, 0, Math.PI*2, false)
+        c.arc(explosions[id].x*devicePxRat-cam.x, explosions[id].y*devicePxRat-cam.y, explosions[id].power*50*devicePxRat, 0, Math.PI*2, false)
         c.fill()
         c.closePath()
         explosions[id].a -= 0.05
