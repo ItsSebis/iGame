@@ -553,13 +553,11 @@ function explosion(x, y, power, attacker) {
 
         if (dist - power * 50 - 20 < 1) {
             // in explosion
-            console.log(dist - power * 50 - 20)
             dmgPlayer(id, 20*power, attacker)
             if (id !== attacker) {
                 io.to(id).emit('explosion', {x: x, y: y, power: power})
             }
         }
-        console.log(dist)
     }
     if (attacker !== undefined) {
         io.to(attacker).emit('explosion', {x: x, y: y, power: power})
@@ -645,18 +643,23 @@ function inObstacle(x, y, radius) {
 function getNiceCords(radius) {
     let x = Math.round(map.width*Math.random())
     let y = Math.round(map.height*Math.random())
+    let sX = x
+    let sY = y
 
+    let i = 0
     while (inObstacle(x, y, radius)) {
-        if (x < map.width/2) {
+        if (sX < map.width/2) {
             x += 100
         } else {
             x -= 100
         }
-        if (y < map.height/2) {
+        if (sY < map.height/2) {
             y += 100
         } else {
             y -= 100
         }
+        i++
+        console.log("Try: " + i + " x: " + x + " y: " + y)
     }
     return {x, y}
 }

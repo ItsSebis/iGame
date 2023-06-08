@@ -225,29 +225,6 @@ socket.on('updatePlayers', (backendPlayers) => {
     healEl.innerHTML = "<span style='color: lime'>" + players[ego].health + "</span> | <span style='color: #5e90da'>" + players[ego].shield + "</span>"
     typeEl.innerText = types[players[ego].type].name
 
-    tBodyEl.innerHTML = ""
-    for (const id in players) {
-        const p = players[id]
-
-        const row = document.createElement("tr")
-        const name = document.createElement("td")
-        const kills = document.createElement("td")
-        const deaths = document.createElement("td")
-        const dmg = document.createElement("td")
-
-        name.innerText = p.name
-        row.appendChild(name)
-        kills.innerText = p.kills
-        row.appendChild(kills)
-        deaths.innerText = p.deaths
-        row.appendChild(deaths)
-        dmg.innerText = p.dmgDealt
-        row.appendChild(dmg)
-
-        tBodyEl.appendChild(row)
-    }
-
-    sortTable()
 })
 
 // new coordinate data
@@ -489,6 +466,36 @@ async function updateTPS() {
     }, 100)
 }
 
+async function updateTable() {
+    tBodyEl.innerHTML = ""
+    for (const id in players) {
+        const p = players[id]
+
+        const row = document.createElement("tr")
+        const name = document.createElement("td")
+        const kills = document.createElement("td")
+        const deaths = document.createElement("td")
+        const dmg = document.createElement("td")
+
+        name.innerText = p.name
+        row.appendChild(name)
+        kills.innerText = p.kills
+        row.appendChild(kills)
+        deaths.innerText = p.deaths
+        row.appendChild(deaths)
+        dmg.innerText = p.dmgDealt
+        row.appendChild(dmg)
+
+        tBodyEl.appendChild(row)
+    }
+
+    sortTable()
+
+    setTimeout(function () {
+        updateTable()
+    }, 500)
+}
+
 // set onclick functions for type selectors
 //selShot.onclick = function () {
 //    socket.emit('selectType', 1)
@@ -502,4 +509,5 @@ async function updateTPS() {
 
 // call loops
 updateTPS().then()
+updateTable().then()
 animate()
