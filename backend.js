@@ -8,6 +8,9 @@ const port = 6969
 const admin = express()
 const aPort = 1870
 
+// require bcrypt
+const bcrypt = require("bcrypt")
+
 // socket.io setup
 const http = require('http')
 const { Server } = require('socket.io')
@@ -527,16 +530,6 @@ const types = {
     }
 }
 
-// deprecated player names array
-const names = [
-    "Andi Waffen", "Anna Nass", "Axel Schweiss", "Albert Tross", "Ali Baba", "Anne Wand",
-    "Bob Fahrer", "Bill Ich", "Bren Essel", "Claire Grube", "Dick Erchen", "Bernhard Diener",
-    "Dick S.Ding", "Ed Ding", "Ernst Haft", "Frank Reich", "Andi Mauer", "Hans A. Bier", "Hans Maul",
-    "Heide Witzka", "Hein Blöd", "Heinz Ellmann", "Fixie", "Hugo Slawien", "Jake Daniel", "Gorbatschow",
-    "James Bond", "Jo Ghurt", "A. Merkel", "Ken Tucky", "Klara Fall", "Lisa Bonn", "Mark Aber", "Marta Pfahl",
-    "Mary Huana", "Miss Raten", "Peter Pan", "Peter Silie", "Phil Fraß", "Reiner Korn", "Reiner Zufall", "Wilma Bier"
-]
-
 // add health to player
 function healPlayer(target, heal, overflow) {
     if (players[target] !== undefined) {
@@ -780,7 +773,6 @@ io.on('connection', (socket) => {
     socket.on('disconnect', (reason) => {
         console.log(reason)
         io.emit('logEntry', players[socket.id].name + " left the game")
-        names.push(players[socket.id].name)
         for (const id in projectiles) {
             if (projectiles[id].shooter === socket.id) {
                 projectiles.splice(id, 1)
@@ -926,6 +918,7 @@ function update() {
         io.emit('updateItems', items)
     }
     io.emit('updateCords', players)
+    aio.to('adminRoom').emit('updatePlayers', players)
     io.emit('updateItems', items)
     io.emit('updateProj', projectiles)
     const end = Date.now();
@@ -937,24 +930,19 @@ function update() {
     }, 12)
 }
 
-// async function oneSecTick() {
-//     for (const id in obstacles) {
-//         const obst = obstacles[id]
-//         for (const player in players) {
-//             const p = players[player]
-//             if (p.x + 10 > obst.start.x &&
-//                 p.y + 10 > obst.start.y &&
-//                 p.x - 10 < obst.start.x + obst.end.x &&
-//                 p.y - 10 < obst.start.y + obst.end.y) {
-//                 // player is in obstacle
-//                 dmgPlayer(player, 10, undefined, true) // zero damage for tests
-//             }
-//         }
-//     }
-//     setTimeout(function () {
-//         oneSecTick()
-//     }, 1000)
-// }
+// Admin panel
+aio.on('connection', (socket) => {
+    socket.on('authenticate', (password) => {
+        bcrypt.compare(password, "$2b$10$ORp0YNGY6TTjAeZX/ZJSueAjZFYeUClyRzTqkaWVnyUdUG2l1KMAG", function (err, result) {
+            // password valid
+            if (result) {
+                socket.emit('authenticated')
+                socket.join("adminRoom")
+                console.log("Admin authenticated")
+            }
+        })
+    })
+})
 
 server.listen(port, () => {
     console.log(`App listening on port ${port}`)

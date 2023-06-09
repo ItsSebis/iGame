@@ -1,4 +1,95 @@
 <!DOCTYPE html>
-<html>
-    <body>Hello There!</body>
+<html lang="de">
+    <head>
+        <title>iGame Admin</title>
+        <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+        <link rel="icon" href="admin.png">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100&amp;family=Roboto+Mono:wght@300&amp;display=swap" rel="stylesheet">
+        <style>
+            * {
+                font-family: 'Roboto Mono', monospace;
+            }
+            body {
+                background-color: #363636;
+                color: #fff;
+            }
+            h1 {
+                font-size: 4rem;
+                text-align: center;
+            }
+            input {
+
+            }
+            button {
+
+            }
+            .table {
+                width: 100%;
+            }
+            table {
+                width: 100%;
+                text-align: center;
+                background-color: #4a4a4a;
+                border: solid #4a4a4a;
+                border-radius: 15px;
+            }
+            th {
+                font-size: 2rem;
+            }
+            tbody {
+                font-size: 1.3rem;
+            }
+            #standBody tr:nth-child(even) {
+                background-color: #4a4a4a;
+                border-left: solid #3c3c3c;
+                border-right: solid #3c3c3c;
+            }
+            #standBody tr:nth-child(odd) {
+                background-color: #3c3c3c;
+                border-left: solid #4a4a4a;
+                border-right: solid #4a4a4a;
+            }
+            #nameHead {
+                overflow-x: hidden;
+                width: 65%;
+            }
+            #killsHead {
+                width: 10%;
+            }
+            #deathsHead {
+                width: 10%;
+            }
+            #dmgHead {
+                width: 15%;
+            }
+        </style>
+    </head>
+    <body>
+    <div id="admin" style="display: none">
+        <h1>iGame Admin</h1>
+        <div class="table">
+            <table id="standings">
+                <thead>
+                <tr>
+                    <th id="nameHead">Name</th>
+                    <th id="killsHead"><i class='bx bxs-bullseye' style="color: lime"></i></th>
+                    <th id="deathsHead"><i class='bx bxs-skull' style="color: red"></i></th>
+                    <th id="dmgHead">DMG</th>
+                </tr>
+                </thead>
+                <tbody id="standBody"></tbody>
+            </table>
+        </div>
+    </div>
+    <div id="password" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center">
+        <form action="javascript:void(0);">
+            <label for="pwField"></label><input type="password" id="pwField" placeholder="Password..."><br>
+            <button onclick="socket.emit('authenticate', document.getElementById('pwField').value); document.getElementById('pwField').value = ''" type="submit">Authenticate</button>
+        </form>
+    </div>
+    </body>
 </html>
+<script type="application/javascript" src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+<script type="application/javascript" src="js/index.js"></script>

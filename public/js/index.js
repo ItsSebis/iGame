@@ -20,9 +20,6 @@ canvas.height = innerHeight * devicePxRat
 // gui elements
 const typeSwitcher = document.querySelector("#typeSwitcher")
 const tBodyEl = document.querySelector('#standBody')
-const selShot = document.querySelector('#selectShot')
-const selSnipe = document.querySelector('#selectSnipe')
-const selSpray = document.querySelector('#selectSpray')
 const nameEl = document.querySelector('#name')
 const healEl = document.querySelector('#health')
 const killEl = document.querySelector('#kills')
@@ -93,7 +90,7 @@ function sortTable() {
     switching = true;
     while (switching) {
         switching = false;
-        rows = table.getElementsByTagName("TR");
+        rows = tBodyEl.getElementsByTagName("TR");
         for (i = 0; i < (rows.length - 1); i++) {
             shouldSwitch = false;
             /*Get the two elements you want to compare,
@@ -118,7 +115,7 @@ function sortTable() {
     switching = true;
     while (switching) {
         switching = false;
-        rows = table.getElementsByTagName("TR");
+        rows = tBodyEl.getElementsByTagName("TR");
         for (i = 0; i < (rows.length - 1); i++) {
             shouldSwitch = false;
             /*Get the two elements you want to compare,
@@ -143,7 +140,7 @@ function sortTable() {
     switching = true
     while (switching) {
         switching = false;
-        rows = table.getElementsByTagName("TR");
+        rows = tBodyEl.getElementsByTagName("TR");
         for (i = 0; i < (rows.length - 1); i++) {
             shouldSwitch = false;
             /*Get the two elements you want to compare,
