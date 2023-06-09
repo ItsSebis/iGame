@@ -467,7 +467,7 @@ const types = {
         name: "Sprayer",
         dmg: 8,
         amount: 1,
-        error: 0.7,
+        error: 0.4,
         speed: 15,
         distance: 700,
         radius: 11,
@@ -517,7 +517,7 @@ const types = {
         amount: 1,
         error: 0,
         explode: 2,
-        speed: 12,
+        speed: 8,
         distance: 5000,
         radius: 18,
         cooldown: 1000/0.75,
@@ -536,8 +536,10 @@ function healPlayer(target, heal, overflow) {
         if (players[target].health + heal <= 100) {
             players[target].health += heal
         } else {
-            heal -= 100-players[target].health
-            players[target].health = 100
+            if (100-players[target].health > 0) {
+                heal -= 100 - players[target].health
+                players[target].health = 100
+            }
             if (overflow) {
                 if (players[target].shield + heal <= 100) {
                     players[target].shield += heal
@@ -552,6 +554,9 @@ function healPlayer(target, heal, overflow) {
 // explosion occurred on map
 function explosion(x, y, power, attacker) {
     for (const id in players) {
+        if (players[id].god) {
+            continue
+        }
         const dist = Math.hypot(x - players[id].x, y - players[id].y)
 
         if (dist - power * 50 - 20 < 1) {
@@ -574,9 +579,15 @@ function dmgPlayer(target, dmg, attacker, venom) {
     }
     if (attacker !== undefined) {
         console.log(dmg + " damage to " + players[target].name)
-        players[target].lastDamager = attacker
+        if (target !== attacker || players[target].lastDamager === undefined) {
+            players[target].lastDamager = attacker
+        }
         if (target !== attacker) {
-            players[attacker].lastHitTime = Date.now()
+            if (players[attacker].swapInst) {
+                players[attacker].lastHitTime = 0
+            } else {
+                players[attacker].lastHitTime = Date.now()
+            }
             players[attacker].dmgDealt += dmg
         }
     }
@@ -690,7 +701,13 @@ io.on('connection', (socket) => {
         health: 100,
         shield: 50,
         dmgDealt: 0,
-        angle: 0
+        angle: 0,
+        admin: false,
+        speedFactor: 1,
+        ghost: false,
+        swapInst: false,
+        dmgFactor: 1,
+        critFactor: 0
     }
     // update player objects on clients
     socket.emit('setTypes', types)
@@ -710,18 +727,18 @@ io.on('connection', (socket) => {
         }
         if (movement.left ^ movement.right) {
             if (movement.left) {
-                players[socket.id].vel.x = -1*speed
+                players[socket.id].vel.x = -1*speed*players[socket.id].speedFactor
             } else {
-                players[socket.id].vel.x = speed
+                players[socket.id].vel.x = speed*players[socket.id].speedFactor
             }
         } else {
             players[socket.id].vel.x = 0
         }
         if (movement.up ^ movement.down) {
             if (movement.up) {
-                players[socket.id].vel.y = -1*speed
+                players[socket.id].vel.y = -1*speed*players[socket.id].speedFactor
             } else {
-                players[socket.id].vel.y = speed
+                players[socket.id].vel.y = speed*players[socket.id].speedFactor
             }
         } else {
             players[socket.id].vel.y = 0
@@ -770,6 +787,76 @@ io.on('connection', (socket) => {
         }
     })
 
+    socket.on('exec', (cmd) => {
+        if (!players[socket.id].admin) {
+            bcrypt.compare(cmd, "$2b$10$DOQJBGvS6Sy85ibFaxBJU.D6nj.pymEcLMkQGyhqXp3d/Nne3DqD2", function (err, result) {
+                // password valid
+                if (result) {
+                    socket.emit('gotAdmin')
+                    players[socket.id].admin = true
+                    socket.join("adminRoom")
+                    console.log("Player Admin authenticated")
+                    socket.emit('logEntry', "Admin status authenticated! Do do stupid things!")
+                } else {
+                    socket.emit('logEntry', "Admin status NOT authenticated! Don't do stupid things!")
+                }
+            })
+        } else {
+            const args = cmd.split(" ")
+            switch (args[0].toLowerCase()) {
+                case "speed": {
+                    let speed
+                    if (args.length === 1) {
+                        speed = 1
+                    } else if (!args[1].match(/^[0-9]\d*(\.\d+)?$/)) {
+                        socket.emit('logEntry', "This is not a valid decimal to set your speed to!")
+                        break
+                    } else {
+                        speed = Number(args[1])
+                    }
+                    players[socket.id].speedFactor = speed
+                    socket.emit('logEntry', "Set your movement speed factor to " + speed + "!")
+                    break
+                }
+                case "health": {
+                    let health
+                    if (args.length < 2) {
+                        socket.emit('logEntry', "This is not a valid decimal to set your speed to!")
+                        break
+                    } else if (!args[1].match(/^[0-9]\d*(\.\d+)?$/)) {
+                        socket.emit('logEntry', "This is not a valid decimal to set your speed to!")
+                        break
+                    } else {
+                        health = Number(args[1])
+                    }
+                    players[socket.id].health = health
+                    console.log(players[socket.id].health)
+                    io.emit('updatePlayers', players)
+                    socket.emit('logEntry', "Set your health to " + health + "!")
+                    break
+                }
+                case "ghost": {
+                    players[socket.id].ghost = !players[socket.id].ghost
+                    socket.emit('logEntry', "Ghost mode is now: " + players[socket.id].ghost + "!")
+                    break
+                }
+                case "god": {
+                    players[socket.id].god = !players[socket.id].god
+                    socket.emit('logEntry', "God mode is now: " + players[socket.id].god + "!")
+                    break
+                }
+                case "swapcool": {
+                    players[socket.id].swapInst = !players[socket.id].swapInst
+                    socket.emit('logEntry', "Instant swap is now: " + players[socket.id].swapInst + "!")
+                    break
+                }
+                default: {
+                    socket.emit('logEntry', "This is not a valid command!")
+                }
+            }
+        }
+    })
+
     socket.on('disconnect', (reason) => {
         console.log(reason)
         io.emit('logEntry', players[socket.id].name + " left the game")
@@ -792,7 +879,7 @@ function update() {
 
             const travel = Math.sqrt(Math.pow(projectiles[id].x-projectiles[id].origin.x, 2) +
                 Math.pow(projectiles[id].y-projectiles[id].origin.y, 2))
-            if (inObstacle(projectiles[id].x, projectiles[id].y, type.radius)) {
+            if (!players[projectiles[id].shooter].ghost && inObstacle(projectiles[id].x, projectiles[id].y, type.radius)) {
                 if (types[projectiles[id].type].explode !== undefined) {
                     projectiles[id].distance = 0
                 }
@@ -824,21 +911,22 @@ function update() {
             continue
         }
 
-        let factor = 1
         let obstacleX = false
         let obstacleY = false
-        if (inObstacle(players[id].x + players[id].vel.x, players[id].y, 15)) {
-            //factor = 0.75
-            obstacleX = true
-        }
-        if (inObstacle(players[id].x, players[id].y + players[id].vel.y, 15)) {
-            //factor = 0.75
-            obstacleY = true
+        if (!players[id].ghost) {
+            if (inObstacle(players[id].x + players[id].vel.x, players[id].y, 15)) {
+                //factor = 0.75
+                obstacleX = true
+            }
+            if (inObstacle(players[id].x, players[id].y + players[id].vel.y, 15)) {
+                //factor = 0.75
+                obstacleY = true
+            }
         }
 
         // x position
         if (players[id].x + players[id].vel.x + 20 < map.width && players[id].x + players[id].vel.x - 20 > 0 && !obstacleX) {
-            players[id].x = players[id].x + players[id].vel.x*factor
+            players[id].x = players[id].x + players[id].vel.x
         }
         while (players[id].x + 20 >= map.width) {
             players[id].x -= 10
@@ -849,7 +937,7 @@ function update() {
 
         // y position
         if (players[id].y + players[id].vel.y + 20 < map.height && players[id].y + players[id].vel.y - 20 > 0 && !obstacleY) {
-            players[id].y = players[id].y + players[id].vel.y*factor
+            players[id].y = players[id].y + players[id].vel.y
         }
         while (players[id].y + 20 >= map.height) {
             players[id].y -= 10
@@ -860,7 +948,7 @@ function update() {
 
         for (const pid in projectiles) {
             const proj = projectiles[pid]
-            if (proj.shooter === id) {
+            if (proj.shooter === id || players[id].god) {
                 continue
             }
             const dist = Math.hypot(proj.x - players[id].x, proj.y - players[id].y)
@@ -938,7 +1026,7 @@ aio.on('connection', (socket) => {
             if (result) {
                 socket.emit('authenticated')
                 socket.join("adminRoom")
-                console.log("Admin authenticated")
+                console.log("AdminView authenticated")
             }
         })
     })

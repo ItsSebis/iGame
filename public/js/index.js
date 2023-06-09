@@ -67,6 +67,11 @@ let items = []
 let obstacles = []
 let explosions = []
 
+// terminal for testing and other fun stuff... will not be abused...
+let term = false
+const recmd = []
+let curCmd = 0
+
 // shooting type names
 let types = {
     1: "Shooter",
@@ -245,11 +250,11 @@ socket.on('updateProj', (backendProj) => {
     }
     for (const id in backendProj) {
         const bP = backendProj[id]
+        let color = 'red'
+        if (socket.id === bP.shooter) {
+            color = 'blue'
+        }
         if (!projectiles[id]) {
-            let color = 'red'
-            if (socket.id === bP.shooter) {
-                color = 'blue'
-            }
             projectiles[id] = new Projectile({
                 x: bP.x,
                 y: bP.y,
@@ -259,6 +264,8 @@ socket.on('updateProj', (backendProj) => {
         } else {
             projectiles[id].x = bP.x
             projectiles[id].y = bP.y
+            projectiles[id].radius = bP.radius
+            projectiles[id].color = color
         }
     }
 })
@@ -319,6 +326,11 @@ socket.on('damageDealt', (critical) => {
         snd = new Audio("sounds/critical.wav")
     }
     snd.play().then()
+})
+
+// authenticated
+socket.on('gotAdmin', () => {
+    document.querySelector("#term").removeAttribute("type")
 })
 
 // new kill
@@ -404,6 +416,12 @@ function animate() {
     yCEl.innerText = cam.y
     pCEl.innerText = Object.keys(players).length
     prCEl.innerText = Object.keys(projectiles).length
+    if (!term && !document.querySelector("#terminal").hasAttribute("style")) {
+        document.querySelector("#terminal").setAttribute("style", "display: none;")
+    } else if (term && document.querySelector("#terminal").hasAttribute("style")) {
+        document.querySelector("#terminal").removeAttribute("style")
+        document.querySelector("#term").focus()
+    }
     const movement = {
         angle: mouseAngle,
         name: ign,
@@ -493,16 +511,15 @@ async function updateTable() {
     }, 500)
 }
 
-// set onclick functions for type selectors
-//selShot.onclick = function () {
-//    socket.emit('selectType', 1)
-//}
-//selSpray.onclick = function () {
-//    socket.emit('selectType', 2)
-//}
-//selSnipe.onclick = function () {
-//    socket.emit('selectType', 3)
-//}
+document.getElementById("termForm").onsubmit = function () {
+    const terminal = document.getElementById("term")
+    socket.emit('exec', terminal.value)
+    if (!terminal.hasAttribute("type")) {
+        recmd.push(terminal.value)
+        curCmd = recmd.length
+    }
+    terminal.value = ""
+}
 
 // call loops
 updateTPS().then()
