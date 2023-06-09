@@ -5,17 +5,27 @@ let lastUpdateTime = 0
 const express = require('express')
 const backend = express()
 const port = 6969
+const admin = express()
+const aPort = 1870
 
 // socket.io setup
 const http = require('http')
-const server = http.createServer(backend)
 const { Server } = require('socket.io')
+
+const adminServer = http.createServer(admin)
+const aio = new Server(adminServer, {pingInterval: 1500, pingTimeout: 3000})
+
+const server = http.createServer(backend)
 const io = new Server(server, {pingInterval: 500, pingTimeout: 1000})
 
 // setup express server
 backend.use(express.static('./public'))
 backend.get('/', (req, res) => {
     res.sendFile(__dirname + '/public/index.html')
+})
+admin.use(express.static('./admin'))
+admin.get('/', (req, res) => {
+    res.sendFile(__dirname + '/admin/index.html')
 })
 
 // speed: movement speed per tick
@@ -948,6 +958,9 @@ function update() {
 
 server.listen(port, () => {
     console.log(`App listening on port ${port}`)
+})
+adminServer.listen(aPort, () => {
+    console.log(`Admin server listening on port ${aPort}`)
 })
 
 // oneSecTick().then()
