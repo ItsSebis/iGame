@@ -702,12 +702,15 @@ io.on('connection', (socket) => {
         shield: 50,
         dmgDealt: 0,
         angle: 0,
+        // admin vars
         admin: false,
         speedFactor: 1,
         ghost: false,
         swapInst: false,
         dmgFactor: 1,
-        critFactor: 0
+        critFactor: 0,
+        cooldown: -1,
+        shootError: true
     }
     // update player objects on clients
     socket.emit('setTypes', types)
@@ -748,9 +751,16 @@ io.on('connection', (socket) => {
 
     socket.on('shoot', (angle) => {
         const type = types[players[socket.id].type]
-        if (Date.now()-players[socket.id].lastShootTime >= type.cooldown) {
+        let cooldown = type.cooldown
+        if (players[socket.id].cooldown !== -1) {
+            cooldown = players[socket.id].cooldown
+        }
+        if (Date.now()-players[socket.id].lastShootTime >= cooldown) {
             for (let i = 0; i < type.amount; i++) {
                 let shotError = Math.random()*type.error-type.error/2
+                if (!players[socket.id].shootError) {
+                    shotError = 0
+                }
                 let finalAngle = angle+shotError
                 if (finalAngle < 0-Math.PI) {
                     finalAngle += 2*Math.PI
@@ -821,23 +831,69 @@ io.on('connection', (socket) => {
                 case "health": {
                     let health
                     if (args.length < 2) {
-                        socket.emit('logEntry', "This is not a valid decimal to set your speed to!")
+                        socket.emit('logEntry', "This is not a valid decimal to set your health to!")
                         break
                     } else if (!args[1].match(/^[0-9]\d*(\.\d+)?$/)) {
-                        socket.emit('logEntry', "This is not a valid decimal to set your speed to!")
+                        socket.emit('logEntry', "This is not a valid decimal to set your health to!")
                         break
                     } else {
                         health = Number(args[1])
                     }
                     players[socket.id].health = health
-                    console.log(players[socket.id].health)
                     io.emit('updatePlayers', players)
                     socket.emit('logEntry', "Set your health to " + health + "!")
+                    break
+                }
+                case "dmg": {
+                    let dmg
+                    if (args.length === 1) {
+                        dmg = 1
+                    } else if (!args[1].match(/^[0-9]\d*(\.\d+)?$/)) {
+                        socket.emit('logEntry', "This is not a valid decimal to set your damage factor to!")
+                        break
+                    } else {
+                        dmg = Number(args[1])
+                    }
+                    players[socket.id].dmgFactor = dmg
+                    socket.emit('logEntry', "Set your damage factor to " + dmg + "!")
+                    break
+                }
+                case "crit": {
+                    let crit
+                    if (args.length === 1) {
+                        crit = 0
+                    } else if (!args[1].match(/^[0-9]\d*(\.\d+)?$/)) {
+                        socket.emit('logEntry', "This is not a valid decimal to set your crit factor to!")
+                        break
+                    } else {
+                        crit = Number(args[1])
+                    }
+                    players[socket.id].critFactor = crit
+                    socket.emit('logEntry', "Set your crit probability to " + (100/crit) + "%!")
+                    break
+                }
+                case "cooldown": {
+                    let cooldown
+                    if (args.length === 1) {
+                        cooldown = -1
+                    } else if (!args[1].match(/^[0-9]\d*(\.\d+)?$/)) {
+                        socket.emit('logEntry', "This is not a valid decimal to set your crit factor to!")
+                        break
+                    } else {
+                        cooldown = Number(args[1])
+                    }
+                    players[socket.id].cooldown = cooldown
+                    socket.emit('logEntry', "Set your crit factor to " + cooldown + "!")
                     break
                 }
                 case "ghost": {
                     players[socket.id].ghost = !players[socket.id].ghost
                     socket.emit('logEntry', "Ghost mode is now: " + players[socket.id].ghost + "!")
+                    break
+                }
+                case "error": {
+                    players[socket.id].shootError = !players[socket.id].shootError
+                    socket.emit('logEntry', "Shoot error is now: " + players[socket.id].shootError + "!")
                     break
                 }
                 case "god": {
@@ -955,10 +1011,14 @@ function update() {
 
             if (dist - 20 - proj.radius < 1) {
                 // projectile hit
-                let dmg = Math.round(types[proj.type].dmg/(types[proj.type].distance/proj.distance))
-                const random = Math.floor(Math.random()*types[proj.type].critical)+1
-                io.to(proj.shooter).emit('damageDealt', (random === types[proj.type].critical))
-                if (random === types[proj.type].critical) {
+                let dmg = Math.round(types[proj.type].dmg/(types[proj.type].distance/proj.distance))*players[proj.shooter].dmgFactor
+                let critP = types[proj.type].critical
+                if (players[proj.shooter].critFactor !== 0) {
+                    critP = players[proj.shooter].critFactor
+                }
+                const random = Math.floor(Math.random()*critP)+1
+                io.to(proj.shooter).emit('damageDealt', (random === critP))
+                if (random === critP) {
                     dmg *= 2
                 }
                 dmgPlayer(id, dmg, proj.shooter, false)
