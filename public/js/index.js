@@ -13,7 +13,7 @@ const tpsEl = document.querySelector('#tpsEl')
 let recentTPS = []
 
 // device pixel ration -> more pixel, more sight, no no
-const devicePxRat = window.devicePixelRatio || 1
+const devicePxRat = 1920 / innerWidth
 canvas.width = innerWidth * devicePxRat
 canvas.height = innerHeight * devicePxRat
 
@@ -226,7 +226,6 @@ socket.on('updatePlayers', (backendPlayers) => {
     deathEl.innerText = players[ego].deaths
     healEl.innerHTML = "<span style='color: lime'>" + players[ego].health + "</span> | <span style='color: #5e90da'>" + players[ego].shield + "</span>"
     typeEl.innerText = types[players[ego].type].name
-
 })
 
 // new coordinate data
@@ -333,6 +332,11 @@ socket.on('gotAdmin', () => {
     document.querySelector("#term").removeAttribute("type")
 })
 
+// unauthenticated
+socket.on('noAdmin', () => {
+    document.querySelector("#term").setAttribute("type", "password")
+})
+
 // new kill
 socket.on('kill', () => {
     const snd = new Audio("sounds/kill.wav")
@@ -358,11 +362,11 @@ function animate() {
 
     c.strokeStyle = 'rgb(30, 30, 30)'
     c.lineWidth = 1
-    for (let i = 0; i < (map.width+50)*devicePxRat; i+=50*devicePxRat) {
+    for (let i = 0; i < (map.width)*devicePxRat; i+=50*devicePxRat) {
         c.moveTo(i-cam.x, 0-cam.y)
         c.lineTo(i-cam.x, map.height*devicePxRat-cam.y)
     }
-    for (let i = 0; i < (map.height+50)*devicePxRat; i+=50*devicePxRat) {
+    for (let i = 0; i < (map.height)*devicePxRat; i+=50*devicePxRat) {
         c.moveTo(0-cam.x, i-cam.y)
         c.lineTo(map.width*devicePxRat-cam.x, i-cam.y)
     }

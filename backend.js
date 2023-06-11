@@ -41,6 +41,7 @@ const map = {
 
 // backend objects
 const players = {}
+const names = {}
 const projectiles = []
 const items = []
 const obstacles = [
@@ -639,6 +640,31 @@ function deadPlayer(dead) {
         "<i class='bx bx-chevrons-left' ></i> <span style='color: lime'>" + killerName + "</span> " + killerType)
 }
 
+// reset player
+function resetPlayer(target) {
+    const cords = getNiceCords(25)
+    players[target].x = cords.x
+    players[target].y = cords.y
+    players[target].kills = 0
+    players[target].deaths = 0
+    players[target].admin = false
+    players[target].health = 100
+    players[target].lastHitTime = 0
+    players[target].lastShootTime = 0
+    players[target].lastDamager = undefined
+    players[target].level = 0
+    players[target].shield = 50
+    players[target].dmgDealt = 0
+    players[target].speedFactor = 1
+    players[target].ghost = false
+    players[target].swapInst = false
+    players[target].dmgFactor = 1
+    players[target].critFactor = 0
+    players[target].cooldown = -1
+    players[target].shootError = true
+    io.to(target).emit('noAdmin')
+}
+
 // check if object passes through obstacle
 function inObstacle(x, y, radius) {
     for (const id in obstacles) {
@@ -720,9 +746,16 @@ io.on('connection', (socket) => {
     // update velocity on player movement
     socket.on('movement', (movement) => {
         if (players[socket.id].name === null && movement.name.match(/^[a-zA-Z0-9]+$/) && movement.name.length <= 50) {
-            console.log("Changed name of " + movement.name)
-            players[socket.id].name = movement.name
-            io.emit('logEntry', movement.name + " joined the game")
+            let name = movement.name
+            let nIndex = 2
+            while (names[name] !== undefined) {
+                name = movement.name + nIndex
+                nIndex++
+            }
+            players[socket.id].name = name
+            names[name] = socket.id
+            console.log("Changed name of " + name)
+            io.emit('logEntry', name + " joined the game")
             io.emit('updatePlayers', players)
         }
         if (players[socket.id].name === null) {
@@ -791,7 +824,7 @@ io.on('connection', (socket) => {
     })
 
     socket.on('selectType', (type) => {
-        if (types[type] !== undefined && Date.now() - players[socket.id].lastHitTime > 10000) {
+        if (types[type] !== undefined && (Date.now() - players[socket.id].lastHitTime > 10000 || players[socket.id].swapInst)) {
             players[socket.id].type = type
             io.emit('updatePlayers', players)
         }
@@ -806,15 +839,16 @@ io.on('connection', (socket) => {
                     players[socket.id].admin = true
                     socket.join("adminRoom")
                     console.log("Player Admin authenticated")
-                    socket.emit('logEntry', "Admin status authenticated! Do do stupid things!")
+                    socket.emit('logEntry', "<span style='color: lime'>Admin status authenticated! Do stupid things!</span>")
                 } else {
-                    socket.emit('logEntry', "Admin status NOT authenticated! Don't do stupid things!")
+                    socket.emit('logEntry', "<span style='color: red'>Admin status NOT authenticated! Don't do stupid things!</span>")
                 }
             })
         } else {
             const args = cmd.split(" ")
             switch (args[0].toLowerCase()) {
                 case "speed": {
+                    let target
                     let speed
                     if (args.length === 1) {
                         speed = 1
@@ -824,11 +858,22 @@ io.on('connection', (socket) => {
                     } else {
                         speed = Number(args[1])
                     }
-                    players[socket.id].speedFactor = speed
-                    socket.emit('logEntry', "Set your movement speed factor to " + speed + "!")
+                    if (args.length >= 3 && args[2] !== "") {
+                        if (names[args[2]] !== undefined) {
+                            target = names[args[2]]
+                        } else {
+                            socket.emit('logEntry', `${args[2]} is not a player in this game!`)
+                            break
+                        }
+                    } else {
+                        target = socket.id
+                    }
+                    players[target].speedFactor = speed
+                    socket.emit('logEntry', `Set movement speed factor for ${players[target].name} to ${speed}!`)
                     break
                 }
                 case "health": {
+                    let target
                     let health
                     if (args.length < 2) {
                         socket.emit('logEntry', "This is not a valid decimal to set your health to!")
@@ -839,12 +884,23 @@ io.on('connection', (socket) => {
                     } else {
                         health = Number(args[1])
                     }
-                    players[socket.id].health = health
+                    if (args.length >= 3 && args[2] !== "") {
+                        if (names[args[2]] !== undefined) {
+                            target = names[args[2]]
+                        } else {
+                            socket.emit('logEntry', `${args[2]} is not a player in this game!`)
+                            break
+                        }
+                    } else {
+                        target = socket.id
+                    }
+                    players[target].health = health
                     io.emit('updatePlayers', players)
-                    socket.emit('logEntry', "Set your health to " + health + "!")
+                    socket.emit('logEntry', `Set health for ${players[target].name} to ${health}!`)
                     break
                 }
                 case "dmg": {
+                    let target
                     let dmg
                     if (args.length === 1) {
                         dmg = 1
@@ -854,11 +910,22 @@ io.on('connection', (socket) => {
                     } else {
                         dmg = Number(args[1])
                     }
-                    players[socket.id].dmgFactor = dmg
-                    socket.emit('logEntry', "Set your damage factor to " + dmg + "!")
+                    if (args.length >= 3 && args[2] !== "") {
+                        if (names[args[2]] !== undefined) {
+                            target = names[args[2]]
+                        } else {
+                            socket.emit('logEntry', `${args[2]} is not a player in this game!`)
+                            break
+                        }
+                    } else {
+                        target = socket.id
+                    }
+                    players[target].dmgFactor = dmg
+                    socket.emit('logEntry', `Set damage multiplier for ${players[target].name} to ${dmg}!`)
                     break
                 }
                 case "crit": {
+                    let target
                     let crit
                     if (args.length === 1) {
                         crit = 0
@@ -868,13 +935,27 @@ io.on('connection', (socket) => {
                     } else {
                         crit = Number(args[1])
                     }
-                    players[socket.id].critFactor = crit
-                    socket.emit('logEntry', "Set your crit probability to " + (100/crit) + "%!")
+                    if (args.length >= 3 && args[2] !== "") {
+                        if (names[args[2]] !== undefined) {
+                            target = names[args[2]]
+                        } else {
+                            socket.emit('logEntry', `${args[2]} is not a player in this game!`)
+                            break
+                        }
+                    } else {
+                        target = socket.id
+                    }
+                    players[target].critFactor = crit
+                    socket.emit('logEntry', `Set crit chance for ${players[target].name} to ${100/crit}%!`)
                     break
                 }
                 case "cooldown": {
+                    let target
                     let cooldown
                     if (args.length === 1) {
+                        cooldown = -1
+                    } else if (names[args[1]] !== undefined) {
+                        target = names[args[1]]
                         cooldown = -1
                     } else if (!args[1].match(/^[0-9]\d*(\.\d+)?$/)) {
                         socket.emit('logEntry', "This is not a valid decimal to set your crit factor to!")
@@ -882,28 +963,110 @@ io.on('connection', (socket) => {
                     } else {
                         cooldown = Number(args[1])
                     }
-                    players[socket.id].cooldown = cooldown
-                    socket.emit('logEntry', "Set your crit factor to " + cooldown + "!")
+                    if (args.length >= 3 && args[2] !== "") {
+                        if (names[args[2]] !== undefined) {
+                            target = names[args[2]]
+                        } else {
+                            socket.emit('logEntry', `${args[2]} is not a player in this game!`)
+                            break
+                        }
+                    } else if (target === undefined) {
+                        target = socket.id
+                    }
+                    players[target].cooldown = cooldown
+                    socket.emit('logEntry', `Set cooldown for ${players[target].name} to ${cooldown}!`)
                     break
                 }
                 case "ghost": {
-                    players[socket.id].ghost = !players[socket.id].ghost
-                    socket.emit('logEntry', "Ghost mode is now: " + players[socket.id].ghost + "!")
+                    let target
+                    if (args.length > 1 && args[1] !== "") {
+                        if (names[args[1]] === undefined) {
+                            socket.emit('logEntry', `${args[1]} is not a player in this game!`)
+                            break
+                        } else {
+                            target = names[args[1]]
+                        }
+                    } else {
+                        target = socket.id
+                    }
+                    players[target].ghost = !players[target].ghost
+                    socket.emit('logEntry', "Ghost mode for " + players[target].name + " is now: " + players[target].ghost + "!")
                     break
                 }
                 case "error": {
-                    players[socket.id].shootError = !players[socket.id].shootError
-                    socket.emit('logEntry', "Shoot error is now: " + players[socket.id].shootError + "!")
+                    let target
+                    if (args.length > 1 && args[1] !== "") {
+                        if (names[args[1]] === undefined) {
+                            socket.emit('logEntry', `${args[1]} is not a player in this game!`)
+                            break
+                        } else {
+                            target = names[args[1]]
+                        }
+                    } else {
+                        target = socket.id
+                    }
+                    players[target].shootError = !players[target].shootError
+                    socket.emit('logEntry', "Shooting error for " + players[target].name + " is now: " + players[target].ghost + "!")
                     break
                 }
                 case "god": {
-                    players[socket.id].god = !players[socket.id].god
-                    socket.emit('logEntry', "God mode is now: " + players[socket.id].god + "!")
+                    let target
+                    if (args.length > 1 && args[1] !== "") {
+                        if (names[args[1]] === undefined) {
+                            socket.emit('logEntry', `${args[1]} is not a player in this game!`)
+                            break
+                        } else {
+                            target = names[args[1]]
+                        }
+                    } else {
+                        target = socket.id
+                    }
+                    players[target].god = !players[target].god
+                    socket.emit('logEntry', "God mode for " + players[target].name + " is now: " + players[target].god + "!")
                     break
                 }
                 case "swapcool": {
-                    players[socket.id].swapInst = !players[socket.id].swapInst
-                    socket.emit('logEntry', "Instant swap is now: " + players[socket.id].swapInst + "!")
+                    let target
+                    if (args.length > 1 && args[1] !== "") {
+                        if (names[args[1]] === undefined) {
+                            socket.emit('logEntry', `${args[1]} is not a player in this game!`)
+                            break
+                        } else {
+                            target = names[args[1]]
+                        }
+                    } else {
+                        target = socket.id
+                    }
+                    players[target].swapInst = !players[target].swapInst
+                    socket.emit('logEntry', "Instant swap for " + players[target].name + " is now: " + players[target].swapInst + "!")
+                    break
+                }
+                case "resetplayer": {
+                    let target
+                    if (args.length > 1 && args[1] !== "") {
+                        if (names[args[1]] === undefined) {
+                            socket.emit('logEntry', `${args[1]} is not a player in this game!`)
+                            break
+                        } else {
+                            target = names[args[1]]
+                        }
+                    } else {
+                        socket.emit('logEntry', `Please give a players name to reset!`)
+                        break
+                    }
+                    resetPlayer(target)
+                    io.emit('updatePlayers', players)
+                    socket.emit('logEntry', `${players[target].name} was reset!`)
+                    break
+                }
+                case "reset": {
+                    if (args.length !== 1) {
+                        break
+                    }
+                    for (const id in players) {
+                        resetPlayer(id)
+                    }
+                    io.emit('updatePlayers', players)
                     break
                 }
                 default: {
@@ -921,6 +1084,7 @@ io.on('connection', (socket) => {
                 projectiles.splice(id, 1)
             }
         }
+        delete names[players[socket.id].name]
         delete players[socket.id]
         io.emit('updatePlayers', players)
     })
