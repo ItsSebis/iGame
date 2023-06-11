@@ -3,7 +3,7 @@ class Player {
         this.id = id
         this.x = x
         this.y = y
-        this.radius = 20 * window.devicePixelRatio
+        this.radius = 20 * devicePxRat
         this.color = color
         this.name = name
         this.level = level

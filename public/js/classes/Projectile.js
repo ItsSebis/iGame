@@ -2,7 +2,7 @@ class Projectile {
     constructor({x, y, radius, color}) {
         this.x = x
         this.y = y
-        this.radius = radius * devicePxRat
+        this.radius = radius
         this.color = color
     }
 
