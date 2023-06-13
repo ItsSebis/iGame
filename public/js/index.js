@@ -66,6 +66,7 @@ const projectiles = {}
 let items = []
 let obstacles = []
 let explosions = []
+let damages = []
 
 // terminal for testing and other fun stuff... will not be abused...
 let term = false
@@ -90,8 +91,7 @@ function avg(array) {
 
 // sort standings table
 function sortTable() {
-    let table, rows, switching, i, x, y, shouldSwitch;
-    table = document.getElementById("standings");
+    let rows, switching, i, x, y, shouldSwitch;
     switching = true;
     while (switching) {
         switching = false;
@@ -319,11 +319,14 @@ socket.on('explosion', (explosion) => {
 })
 
 // damage dealt
-socket.on('damageDealt', (critical) => {
+socket.on('damageDealt', (damage) => {
     let snd = new Audio("sounds/hit.wav")
-    if (critical) {
+    if (damage.crit) {
         snd = new Audio("sounds/critical.wav")
     }
+    damage.a = 1
+    damage.time = Date.now()
+    damages.push(damage)
     snd.play().then()
 })
 
@@ -377,17 +380,17 @@ function animate() {
         c.fillRect(obst.start.x*devicePxRat-cam.x, obst.start.y*devicePxRat-cam.y, obst.end.x*devicePxRat, obst.end.y*devicePxRat)
     }
     c.closePath()
+    c.beginPath()
     for (const id in explosions) {
-        c.beginPath()
         c.fillStyle = `rgba(150, 75, 25, ${explosions[id].a})`
         c.arc(explosions[id].x*devicePxRat-cam.x, explosions[id].y*devicePxRat-cam.y, explosions[id].power*50*devicePxRat, 0, Math.PI*2, false)
-        c.fill()
-        c.closePath()
         explosions[id].a -= 0.05
         if (explosions[id].a <= 0) {
             explosions.splice(id, 1)
         }
     }
+    c.fill()
+    c.closePath()
 
     try {
         cam = {
@@ -459,12 +462,32 @@ function animate() {
         const pr = projectiles[id]
         pr.draw()
     }
-    // draw barrel
 
     for (const id in players) {
         const p = players[id]
         p.draw()
     }
+
+    c.beginPath()
+    for (const id in damages) {
+        const dmgData = damages[id]
+        let color = `rgba(255, 255, 255, ${dmgData.a})`
+        if (dmgData.crit) {
+            color = 'red'
+        }
+
+        c.textAlign = 'center'
+        c.fillStyle = color
+        c.font = (30*devicePxRat*dmgData.a) + "px Arial" // (20*dmgData.a) +
+        c.fillText(dmgData.dmg, dmgData.x*devicePxRat-cam.x, dmgData.y*devicePxRat-cam.y-45-40*(1-dmgData.a))
+
+        const restMs= 500-(Date.now() - dmgData.time)
+        damages[id].a = restMs/500
+        if (restMs <= 0) {
+            damages.splice(id, 1)
+        }
+    }
+    c.closePath()
 
     const end = Date.now();
     recentFPS.push(Math.round(1000 / (end - lastUpdateTime)))

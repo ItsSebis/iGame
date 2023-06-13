@@ -1073,6 +1073,7 @@ io.on('connection', (socket) => {
                     socket.emit('logEntry', "This is not a valid command!")
                 }
             }
+            console.log(players[socket.id].name + ": " + cmd)
         }
     })
 
@@ -1181,10 +1182,10 @@ function update() {
                     critP = players[proj.shooter].critFactor
                 }
                 const random = Math.floor(Math.random()*critP)+1
-                io.to(proj.shooter).emit('damageDealt', (random === critP))
                 if (random === critP) {
                     dmg *= 2
                 }
+                io.to(proj.shooter).to(id).emit('damageDealt', {crit: random === critP, x: players[id].x, y: players[id].y, dmg: dmg})
                 dmgPlayer(id, dmg, proj.shooter, false)
                 if (types[proj.type].explode !== undefined) {
                     projectiles[pid].distance = 0
