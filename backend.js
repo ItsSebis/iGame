@@ -42,6 +42,7 @@ const map = {
 // backend objects
 const players = {}
 const names = {}
+const admins = []
 const projectiles = []
 const items = []
 const obstacles = [
@@ -446,7 +447,6 @@ const obstacles = [
         }
     },
 ]
-
 const types = {
     1: {
         name: "Shooter",
@@ -562,10 +562,17 @@ function explosion(x, y, power, attacker) {
 
         if (dist - power * 50 - 20 < 1) {
             // in explosion
-            dmgPlayer(id, 20*power, attacker)
+            const dmg = 25*power*players[attacker].dmgFactor
+            dmgPlayer(id, dmg, attacker)
             if (id !== attacker) {
                 io.to(id).emit('explosion', {x: x, y: y, power: power})
             }
+            io.to(attacker).to(id).emit('damageDealt', {
+                crit: false,
+                x: players[id].x,
+                y: players[id].y,
+                dmg: dmg
+            })
         }
     }
     if (attacker !== undefined) {
@@ -657,6 +664,7 @@ function resetPlayer(target) {
     players[target].dmgDealt = 0
     players[target].speedFactor = 1
     players[target].ghost = false
+    players[target].god = false
     players[target].swapInst = false
     players[target].dmgFactor = 1
     players[target].critFactor = 0
@@ -730,6 +738,7 @@ io.on('connection', (socket) => {
         angle: 0,
         // admin vars
         admin: false,
+        sebi:false,
         speedFactor: 1,
         ghost: false,
         swapInst: false,
@@ -832,16 +841,27 @@ io.on('connection', (socket) => {
 
     socket.on('exec', (cmd) => {
         if (!players[socket.id].admin) {
-            bcrypt.compare(cmd, "$2b$10$DOQJBGvS6Sy85ibFaxBJU.D6nj.pymEcLMkQGyhqXp3d/Nne3DqD2", function (err, result) {
-                // password valid
+            bcrypt.compare(cmd, "$2b$10$9JyUCbd3TPD2Le57Re2WBuA9c5ugLrRYULXHdhxj0xXMcREpRn49K", function (err, result) {
                 if (result) {
                     socket.emit('gotAdmin')
                     players[socket.id].admin = true
+                    players[socket.id].sebi = true
                     socket.join("adminRoom")
                     console.log("Player Admin authenticated")
-                    socket.emit('logEntry', "<span style='color: lime'>Admin status authenticated! Do stupid things!</span>")
+                    socket.emit('logEntry', "<span style='color: lime'>Hey Sebi! You're authenticated! Do funny things!</span>")
                 } else {
-                    socket.emit('logEntry', "<span style='color: red'>Admin status NOT authenticated! Don't do stupid things!</span>")
+                    bcrypt.compare(cmd, "$2b$10$DOQJBGvS6Sy85ibFaxBJU.D6nj.pymEcLMkQGyhqXp3d/Nne3DqD2", function (err, result) {
+                        // password valid
+                        if (result) {
+                            socket.emit('gotAdmin')
+                            players[socket.id].admin = true
+                            socket.join("adminRoom")
+                            console.log("Player Admin authenticated")
+                            socket.emit('logEntry', "<span style='color: lime'>Admin status authenticated! Do stupid things!</span>")
+                        } else {
+                            socket.emit('logEntry', "<span style='color: red'>Admin status NOT authenticated! Don't do stupid things!</span>")
+                        }
+                    })
                 }
             })
         } else {
@@ -867,6 +887,10 @@ io.on('connection', (socket) => {
                         }
                     } else {
                         target = socket.id
+                    }
+                    if (players[target].sebi) {
+                        socket.emit('logEntry', `Don't disturb Sebi!`)
+                        break
                     }
                     players[target].speedFactor = speed
                     socket.emit('logEntry', `Set movement speed factor for ${players[target].name} to ${speed}!`)
@@ -894,6 +918,10 @@ io.on('connection', (socket) => {
                     } else {
                         target = socket.id
                     }
+                    if (players[target].sebi) {
+                        socket.emit('logEntry', `Don't disturb Sebi!`)
+                        break
+                    }
                     players[target].health = health
                     io.emit('updatePlayers', players)
                     socket.emit('logEntry', `Set health for ${players[target].name} to ${health}!`)
@@ -920,6 +948,10 @@ io.on('connection', (socket) => {
                     } else {
                         target = socket.id
                     }
+                    if (players[target].sebi) {
+                        socket.emit('logEntry', `Don't disturb Sebi!`)
+                        break
+                    }
                     players[target].dmgFactor = dmg
                     socket.emit('logEntry', `Set damage multiplier for ${players[target].name} to ${dmg}!`)
                     break
@@ -944,6 +976,10 @@ io.on('connection', (socket) => {
                         }
                     } else {
                         target = socket.id
+                    }
+                    if (players[target].sebi) {
+                        socket.emit('logEntry', `Don't disturb Sebi!`)
+                        break
                     }
                     players[target].critFactor = crit
                     socket.emit('logEntry', `Set crit chance for ${players[target].name} to ${100/crit}%!`)
@@ -973,6 +1009,10 @@ io.on('connection', (socket) => {
                     } else if (target === undefined) {
                         target = socket.id
                     }
+                    if (players[target].sebi) {
+                        socket.emit('logEntry', `Don't disturb Sebi!`)
+                        break
+                    }
                     players[target].cooldown = cooldown
                     socket.emit('logEntry', `Set cooldown for ${players[target].name} to ${cooldown}!`)
                     break
@@ -988,6 +1028,10 @@ io.on('connection', (socket) => {
                         }
                     } else {
                         target = socket.id
+                    }
+                    if (players[target].sebi) {
+                        socket.emit('logEntry', `Don't disturb Sebi!`)
+                        break
                     }
                     players[target].ghost = !players[target].ghost
                     socket.emit('logEntry', "Ghost mode for " + players[target].name + " is now: " + players[target].ghost + "!")
@@ -1005,6 +1049,10 @@ io.on('connection', (socket) => {
                     } else {
                         target = socket.id
                     }
+                    if (players[target].sebi) {
+                        socket.emit('logEntry', `Don't disturb Sebi!`)
+                        break
+                    }
                     players[target].shootError = !players[target].shootError
                     socket.emit('logEntry', "Shooting error for " + players[target].name + " is now: " + players[target].ghost + "!")
                     break
@@ -1021,6 +1069,10 @@ io.on('connection', (socket) => {
                     } else {
                         target = socket.id
                     }
+                    if (players[target].sebi) {
+                        socket.emit('logEntry', `Don't disturb Sebi!`)
+                        break
+                    }
                     players[target].god = !players[target].god
                     socket.emit('logEntry', "God mode for " + players[target].name + " is now: " + players[target].god + "!")
                     break
@@ -1036,6 +1088,10 @@ io.on('connection', (socket) => {
                         }
                     } else {
                         target = socket.id
+                    }
+                    if (players[target].sebi) {
+                        socket.emit('logEntry', `Don't disturb Sebi!`)
+                        break
                     }
                     players[target].swapInst = !players[target].swapInst
                     socket.emit('logEntry', "Instant swap for " + players[target].name + " is now: " + players[target].swapInst + "!")
@@ -1054,12 +1110,20 @@ io.on('connection', (socket) => {
                         socket.emit('logEntry', `Please give a players name to reset!`)
                         break
                     }
+                    if (players[target].sebi) {
+                        socket.emit('logEntry', `Don't disturb Sebi!`)
+                        break
+                    }
                     resetPlayer(target)
                     io.emit('updatePlayers', players)
                     socket.emit('logEntry', `${players[target].name} was reset!`)
                     break
                 }
                 case "reset": {
+                    if (!players[socket.id].sebi) {
+                        socket.emit('logEntry', `You are not authorized to do this!`)
+                        break
+                    }
                     if (args.length !== 1) {
                         break
                     }
@@ -1092,6 +1156,11 @@ io.on('connection', (socket) => {
 })
 
 function update() {
+    for (const id in admins) {
+        if (!players[admins[id]].admin) {
+            delete admins[id]
+        }
+    }
     for (const id in projectiles) {
         try {
             const type = types[projectiles[id].type]
@@ -1185,8 +1254,15 @@ function update() {
                 if (random === critP) {
                     dmg *= 2
                 }
-                io.to(proj.shooter).to(id).emit('damageDealt', {crit: random === critP, x: players[id].x, y: players[id].y, dmg: dmg})
-                dmgPlayer(id, dmg, proj.shooter, false)
+                if (dmg !== 0) {
+                    io.to(proj.shooter).to(id).emit('damageDealt', {
+                        crit: random === critP,
+                        x: players[id].x,
+                        y: players[id].y,
+                        dmg: dmg
+                    })
+                    dmgPlayer(id, dmg, proj.shooter, false)
+                }
                 if (types[proj.type].explode !== undefined) {
                     projectiles[pid].distance = 0
                 }
@@ -1220,7 +1296,14 @@ function update() {
                 io.emit('updatePlayers', players)
             }
         }
+
+        if (players[id].admin) {
+            if (!admins.includes(id)) {
+                admins.push(id)
+            }
+        }
     }
+
     if (items.length < 5) {
         const cords = getNiceCords(30)
         items.push({
@@ -1230,6 +1313,7 @@ function update() {
         })
         io.emit('updateItems', items)
     }
+    io.to("adminRoom").emit('admins', Object.values(admins))
     io.emit('updateCords', players)
     aio.to('adminRoom').emit('updatePlayers', players)
     io.emit('updateItems', items)

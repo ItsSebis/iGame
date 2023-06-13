@@ -62,6 +62,7 @@ let ego = undefined
 
 // frontend objects
 const players = {}
+let admins = []
 const projectiles = {}
 let items = []
 let obstacles = []
@@ -340,6 +341,11 @@ socket.on('noAdmin', () => {
     document.querySelector("#term").setAttribute("type", "password")
 })
 
+// all admins array
+socket.on('admins', (bAdmins) => {
+    admins = bAdmins
+})
+
 // new kill
 socket.on('kill', () => {
     const snd = new Audio("sounds/kill.wav")
@@ -481,8 +487,8 @@ function animate() {
         c.font = (30*devicePxRat*dmgData.a) + "px Arial" // (20*dmgData.a) +
         c.fillText(dmgData.dmg, dmgData.x*devicePxRat-cam.x, dmgData.y*devicePxRat-cam.y-45-40*(1-dmgData.a))
 
-        const restMs= 500-(Date.now() - dmgData.time)
-        damages[id].a = restMs/500
+        const restMs= 1000-(Date.now() - dmgData.time)
+        damages[id].a = restMs/1000
         if (restMs <= 0) {
             damages.splice(id, 1)
         }

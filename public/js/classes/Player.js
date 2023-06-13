@@ -32,9 +32,13 @@ class Player {
         c.closePath()
         if (this.id !== ego) {
             c.fillStyle = 'lightgray'
+            if (admins.includes(this.id)) {
+                c.fillStyle = 'gold'
+            }
             c.textAlign = 'center'
             c.font = (24*devicePxRat)+'px Arial'
             c.fillText(this.name, this.x*devicePxRat-cam.x, (this.y)*devicePxRat+this.radius*2-cam.y)
+            c.fillStyle = 'lightgray'
             c.font = (16*devicePxRat)+'px Arial'
             c.fillText(types[this.type].name, this.x*devicePxRat-cam.x, (this.y)*devicePxRat+this.radius*2+(18*devicePxRat)-cam.y)
             c.fillStyle = 'lime'
