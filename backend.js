@@ -1157,7 +1157,7 @@ io.on('connection', (socket) => {
 
 function update() {
     for (const id in admins) {
-        if (!players[admins[id]].admin) {
+        if (players[admins[id]] === undefined || !players[admins[id]].admin) {
             delete admins[id]
         }
     }
