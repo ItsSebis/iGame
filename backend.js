@@ -562,17 +562,11 @@ function explosion(x, y, power, attacker) {
 
         if (dist - power * 50 - 20 < 1) {
             // in explosion
-            const dmg = 25*power*players[attacker].dmgFactor
-            dmgPlayer(id, dmg, attacker)
+            const dmg = 25*power
+            dmgPlayer(id, dmg, attacker, false, false)
             if (id !== attacker) {
                 io.to(id).emit('explosion', {x: x, y: y, power: power})
             }
-            io.to(attacker).to(id).emit('damageDealt', {
-                crit: false,
-                x: players[id].x,
-                y: players[id].y,
-                dmg: dmg
-            })
         }
     }
     if (attacker !== undefined) {
@@ -581,11 +575,16 @@ function explosion(x, y, power, attacker) {
 }
 
 // player damage
-function dmgPlayer(target, dmg, attacker, venom) {
+function dmgPlayer(target, dmg, attacker, venom, isCrit) {
     if (dmg <= 0) {
         return
     }
+    if (isCrit) {
+        dmg *= 2
+    }
+    dmg = dmg*(1/players[target].lessDmg)
     if (attacker !== undefined) {
+        dmg = dmg*players[attacker].dmgFactor
         console.log(dmg + " damage to " + players[target].name)
         if (target !== attacker || players[target].lastDamager === undefined) {
             players[target].lastDamager = attacker
@@ -611,6 +610,12 @@ function dmgPlayer(target, dmg, attacker, venom) {
     } else {
         players[target].health -= dmg
     }
+    io.emit('damageDealt', {
+        crit: isCrit,
+        x: players[target].x,
+        y: players[target].y,
+        dmg: dmg
+    })
     if (players[target].health <= 0) {
         deadPlayer(target, attacker)
     }
@@ -743,6 +748,7 @@ io.on('connection', (socket) => {
         ghost: false,
         swapInst: false,
         dmgFactor: 1,
+        lessDmg: 1,
         critFactor: 0,
         cooldown: -1,
         shootError: true
@@ -994,7 +1000,7 @@ io.on('connection', (socket) => {
                         target = names[args[1]]
                         cooldown = -1
                     } else if (!args[1].match(/^[0-9]\d*(\.\d+)?$/)) {
-                        socket.emit('logEntry', "This is not a valid decimal to set your crit factor to!")
+                        socket.emit('logEntry', "This is not a valid decimal to set your cooldown to!")
                         break
                     } else {
                         cooldown = Number(args[1])
@@ -1133,6 +1139,38 @@ io.on('connection', (socket) => {
                     io.emit('updatePlayers', players)
                     break
                 }
+                case "less": {
+                    let target
+                    let lessDmg
+                    if (args.length === 1) {
+                        lessDmg = -1
+                    } else if (names[args[1]] !== undefined) {
+                        target = names[args[1]]
+                        lessDmg = -1
+                    } else if (!args[1].match(/^[0-9]\d*(\.\d+)?$/)) {
+                        socket.emit('logEntry', "This is not a valid decimal to set your own damage factor to!")
+                        break
+                    } else {
+                        lessDmg = Number(args[1])
+                    }
+                    if (args.length >= 3 && args[2] !== "") {
+                        if (names[args[2]] !== undefined) {
+                            target = names[args[2]]
+                        } else {
+                            socket.emit('logEntry', `${args[2]} is not a player in this game!`)
+                            break
+                        }
+                    } else if (target === undefined) {
+                        target = socket.id
+                    }
+                    if (players[target].sebi && !players[socket.id].sebi) {
+                        socket.emit('logEntry', `Don't disturb Sebi!`)
+                        break
+                    }
+                    players[target].lessDmg = lessDmg
+                    socket.emit('logEntry', `Set own damage factor for ${players[target].name} to ${lessDmg}!`)
+                    break
+                }
                 default: {
                     socket.emit('logEntry', "This is not a valid command!")
                 }
@@ -1245,23 +1283,14 @@ function update() {
 
             if (dist - 20 - proj.radius < 1) {
                 // projectile hit
-                let dmg = Math.round(types[proj.type].dmg/(types[proj.type].distance/proj.distance))*players[proj.shooter].dmgFactor
+                let dmg = Math.round(types[proj.type].dmg/(types[proj.type].distance/proj.distance))
                 let critP = types[proj.type].critical
                 if (players[proj.shooter].critFactor !== 0) {
                     critP = players[proj.shooter].critFactor
                 }
                 const random = Math.floor(Math.random()*critP)+1
-                if (random === critP) {
-                    dmg *= 2
-                }
                 if (dmg !== 0) {
-                    io.to(proj.shooter).to(id).emit('damageDealt', {
-                        crit: random === critP,
-                        x: players[id].x,
-                        y: players[id].y,
-                        dmg: dmg
-                    })
-                    dmgPlayer(id, dmg, proj.shooter, false)
+                    dmgPlayer(id, dmg, proj.shooter, false, random === critP)
                 }
                 if (types[proj.type].explode !== undefined) {
                     projectiles[pid].distance = 0
