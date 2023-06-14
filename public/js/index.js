@@ -3,7 +3,7 @@ const canvas = document.querySelector('canvas')
 const c = canvas.getContext('2d')
 
 // socket.io connection
-const socket = io()
+let socket = io()
 
 // client fps and server tps stat elements
 const fpsEl = document.querySelector('#fpsEl')
@@ -27,7 +27,6 @@ const killEl = document.querySelector('#kills')
 const deathEl = document.querySelector('#deaths')
 const logEl = document.querySelector('#log')
 const mEl = document.querySelector('#mEl')
-const mPEl = document.querySelector('#moCEL')
 const xEl = document.querySelector('#xEl')
 const yEl = document.querySelector('#yEl')
 const xCEl = document.querySelector('#xCEl')
@@ -47,7 +46,7 @@ let dPressed = false
 let wPressed = false
 let sPressed = false
 
-// map size
+// map init
 let map = undefined
 // cam position (top left corner of screen)
 let cam = {
@@ -58,6 +57,7 @@ let cam = {
 let ego = undefined
 
 // frontend objects
+let game = undefined
 const players = {}
 let admins = []
 const projectiles = {}
@@ -270,6 +270,16 @@ socket.on('updateItems', (backendItems) => {
     items = backendItems
 })
 
+// receive game
+socket.on('setGame', (backendGame) => {
+    game = backendGame
+})
+
+// destroy game
+socket.on('endGame', () => {
+    game = undefined
+})
+
 // set obstacle map
 socket.on('setMap', (backendMap) => {
     obstacles = backendMap.obstacles
@@ -283,11 +293,13 @@ socket.on('setTypes', (backendTypes) => {
     for (const id in types) {
         const button = document.createElement("button")
         button.innerHTML = types[id].symbol + " " + types[id].name
-        
+
         button.setAttribute("typeId", id)
-        button.setAttribute("id", "type"+id)
+        button.setAttribute("id", "type" + id)
         button.classList.add("typeSelect")
-        button.onclick = function () {socket.emit('selectType', id)}
+        button.onclick = function () {
+            socket.emit('selectType', id)
+        }
         typeSwitcher.appendChild(button)
         typeSwitcher.appendChild(document.createElement("br"))
     }
@@ -357,7 +369,7 @@ socket.on('tps', (tps => {
 let animationId
 function animate() {
     animationId = requestAnimationFrame(animate)
-    if (map === undefined) {
+    if (game === undefined) {
         return
     }
     c.beginPath()
@@ -423,7 +435,6 @@ function animate() {
         }
     } catch (e) {}
     mEl.innerText = mouseAngle
-    mPEl.innerText = "x: " + (mousePos.x/devicePxRat+cam.x) + " y: " + (mousePos.y/devicePxRat+cam.y)
     xCEl.innerText = cam.x
     yCEl.innerText = cam.y
     pCEl.innerText = Object.keys(players).length
@@ -554,6 +565,8 @@ document.getElementById("termForm").onsubmit = function () {
     terminal.value = ""
 }
 
+// join game
+socket.emit('requestGame', 0)
 // call loops
 updateTPS().then()
 updateTable().then()
