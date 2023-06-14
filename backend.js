@@ -888,7 +888,7 @@ io.on('connection', (socket) => {
                     } else {
                         target = socket.id
                     }
-                    if (players[target].sebi) {
+                    if (players[target].sebi && !players[socket.id].sebi) {
                         socket.emit('logEntry', `Don't disturb Sebi!`)
                         break
                     }
@@ -918,7 +918,7 @@ io.on('connection', (socket) => {
                     } else {
                         target = socket.id
                     }
-                    if (players[target].sebi) {
+                    if (players[target].sebi && !players[socket.id].sebi) {
                         socket.emit('logEntry', `Don't disturb Sebi!`)
                         break
                     }
@@ -948,7 +948,7 @@ io.on('connection', (socket) => {
                     } else {
                         target = socket.id
                     }
-                    if (players[target].sebi) {
+                    if (players[target].sebi && !players[socket.id].sebi) {
                         socket.emit('logEntry', `Don't disturb Sebi!`)
                         break
                     }
@@ -977,7 +977,7 @@ io.on('connection', (socket) => {
                     } else {
                         target = socket.id
                     }
-                    if (players[target].sebi) {
+                    if (players[target].sebi && !players[socket.id].sebi) {
                         socket.emit('logEntry', `Don't disturb Sebi!`)
                         break
                     }
@@ -1009,7 +1009,7 @@ io.on('connection', (socket) => {
                     } else if (target === undefined) {
                         target = socket.id
                     }
-                    if (players[target].sebi) {
+                    if (players[target].sebi && !players[socket.id].sebi) {
                         socket.emit('logEntry', `Don't disturb Sebi!`)
                         break
                     }
@@ -1029,7 +1029,7 @@ io.on('connection', (socket) => {
                     } else {
                         target = socket.id
                     }
-                    if (players[target].sebi) {
+                    if (players[target].sebi && !players[socket.id].sebi) {
                         socket.emit('logEntry', `Don't disturb Sebi!`)
                         break
                     }
@@ -1049,7 +1049,7 @@ io.on('connection', (socket) => {
                     } else {
                         target = socket.id
                     }
-                    if (players[target].sebi) {
+                    if (players[target].sebi && !players[socket.id].sebi) {
                         socket.emit('logEntry', `Don't disturb Sebi!`)
                         break
                     }
@@ -1069,7 +1069,7 @@ io.on('connection', (socket) => {
                     } else {
                         target = socket.id
                     }
-                    if (players[target].sebi) {
+                    if (players[target].sebi && !players[socket.id].sebi) {
                         socket.emit('logEntry', `Don't disturb Sebi!`)
                         break
                     }
@@ -1089,7 +1089,7 @@ io.on('connection', (socket) => {
                     } else {
                         target = socket.id
                     }
-                    if (players[target].sebi) {
+                    if (players[target].sebi && !players[socket.id].sebi) {
                         socket.emit('logEntry', `Don't disturb Sebi!`)
                         break
                     }
@@ -1110,7 +1110,7 @@ io.on('connection', (socket) => {
                         socket.emit('logEntry', `Please give a players name to reset!`)
                         break
                     }
-                    if (players[target].sebi) {
+                    if (players[target].sebi && !players[socket.id].sebi) {
                         socket.emit('logEntry', `Don't disturb Sebi!`)
                         break
                     }

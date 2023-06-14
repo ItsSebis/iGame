@@ -108,6 +108,7 @@ function update() {
         const kills = document.createElement("td")
         const deaths = document.createElement("td")
         const dmg = document.createElement("td")
+        const kd = document.createElement("td")
 
         name.innerText = p.name
         row.appendChild(name)
@@ -117,6 +118,12 @@ function update() {
         row.appendChild(deaths)
         dmg.innerText = p.dmgDealt
         row.appendChild(dmg)
+        let tempDeaths = p.deaths
+        if (tempDeaths === 0) {
+            tempDeaths = 1
+        }
+        kd.innerText = Math.round(p.kills/tempDeaths*100)/100
+        row.appendChild(kd)
 
         tBodyEl.appendChild(row)
     }

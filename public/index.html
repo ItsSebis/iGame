@@ -15,6 +15,7 @@
         }
         body {
             margin: 0;
+            cursor: crosshair;
         }
         button {
             outline: none;
@@ -99,6 +100,31 @@
             color: lightgray;
             font-size: xx-large;
         }
+        progress {
+            margin: 0;
+            outline: none;
+            height: 7px;
+            border: 1px solid grey;
+            border-radius: 15px;
+        }
+        #health {
+            color: lime; 
+        }
+        #health::-moz-progress-bar { 
+            background-color: lime; 
+        }
+        #health::-webkit-progress-value {
+            background-color: lime; 
+        }
+        #shield {
+            color: #5e90da; 
+        }
+        #shield::-moz-progress-bar { 
+            background-color: #5e90da; 
+        }
+        #shield::-webkit-progress-value {
+            background-color: #5e90da; 
+        }
     </style>
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <link rel="icon" href="lilsharky.png">
@@ -118,7 +144,7 @@
     <span>Projectiles: <span id="prCEL">0</span></span>
 </div>
 <div style="position: absolute; right: 0; color: white; padding: 8px; font-family: sans-serif; font-size: 24px; user-select: none; text-align: center;max-height: 50%; overflow-y: hidden" id="table">
-<table id="standings" style="">
+<table id="standings">
     <thead>
     <tr>
         <th>Name</th>
@@ -138,8 +164,10 @@
 </div>
 <div style="position: absolute; bottom: 0; left: 50%; transform: translate(-50%, 0); color: white; padding: 8px; font-family: sans-serif; font-size: 14px; user-select: none; text-align: center">
     <h1 id="name" style="font-size: 3rem; color: #15ffee; line-height: 10px"></h1>
-    <h3 id="health" style="font-size: 1.3rem; line-height: 1px"></h3>
-    <p id="type" style="font-size: 1.2rem; line-height: 1px"></p>
+    <p style="margin: 0; margin-top: 10px; font-size: 1.3rem; line-height: 1px"><i class='bx bxs-heart'></i> <span id="healthCount"></span></p><br>
+    <progress id="health" style="font-size: 2.5rem; line-height: 1px" max="100" value="100">Health</progress><br>
+    <p style="margin: 0; margin-top: 10px; font-size: 1.3rem; line-height: 1px"><i class='bx bxs-shield'></i> <span id="shieldCount"></span></p><br>
+    <progress id="shield" style="font-size: 2.5rem; line-height: 1px" max="100" value="100">Shield</progress>
 </div>
 <div id="terminal" style="display: none">
     <form action="javascript:void(0);" id="termForm">

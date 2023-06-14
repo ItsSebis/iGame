@@ -22,10 +22,10 @@ const typeSwitcher = document.querySelector("#typeSwitcher")
 const tBodyEl = document.querySelector('#standBody')
 const nameEl = document.querySelector('#name')
 const healEl = document.querySelector('#health')
+const shieldEl = document.querySelector('#shield')
 const killEl = document.querySelector('#kills')
 const deathEl = document.querySelector('#deaths')
 const logEl = document.querySelector('#log')
-const typeEl = document.querySelector('#type')
 const mEl = document.querySelector('#mEl')
 const mPEl = document.querySelector('#moCEL')
 const xEl = document.querySelector('#xEl')
@@ -225,8 +225,10 @@ socket.on('updatePlayers', (backendPlayers) => {
     nameEl.innerText = players[ego].name
     killEl.innerText = players[ego].kills
     deathEl.innerText = players[ego].deaths
-    healEl.innerHTML = "<span style='color: lime'>" + players[ego].health + "</span> | <span style='color: #5e90da'>" + players[ego].shield + "</span>"
-    typeEl.innerText = types[players[ego].type].name
+    healEl.setAttribute("value", players[ego].health)
+    document.querySelector("#healthCount").innerText = players[ego].health
+    shieldEl.setAttribute("value", players[ego].shield)
+    document.querySelector("#shieldCount").innerText = players[ego].shield
 })
 
 // new coordinate data
