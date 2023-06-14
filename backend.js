@@ -33,11 +33,14 @@ admin.get('/', (req, res) => {
 
 // speed: movement speed per tick
 let speed = 3
-// map size
-const map = {
-    height: 2000,
-    width: 3000
-}
+// require map configuration
+const mapMod = require("./modules/map")
+const map = mapMod.getMap(0)
+const dimensions = map.dimensions
+
+// Game init
+require("./classes/Game");
+const games = {}
 
 // backend objects
 const players = {}
@@ -45,408 +48,7 @@ const names = {}
 const admins = []
 const projectiles = []
 const items = []
-const obstacles = [
-    {
-        start: {
-            x: 1400,
-            y: 900,
-        },
-        end: {
-            x: 200,
-            y: 200
-        }
-    },
-    {
-        start: {
-            x: 1000,
-            y: 950,
-        },
-        end: {
-            x: 200,
-            y: 100
-        }
-    },
-    {
-        start: {
-            x: 1450,
-            y: 500,
-        },
-        end: {
-            x: 100,
-            y: 200
-        }
-    },
-    {
-        start: {
-            x: 1150,
-            y: 650,
-        },
-        end: {
-            x: 150,
-            y: 150
-        }
-    },
-    {
-        start: {
-            x: 1700,
-            y: 650,
-        },
-        end: {
-            x: 150,
-            y: 150
-        }
-    },
-    {
-        start: {
-            x: 1800,
-            y: 950,
-        },
-        end: {
-            x: 200,
-            y: 100
-        }
-    },
-    {
-        start: {
-            x: 1450,
-            y: 1300,
-        },
-        end: {
-            x: 100,
-            y: 200
-        }
-    },
-    {
-        start: {
-            x: 1150,
-            y: 1200,
-        },
-        end: {
-            x: 150,
-            y: 150
-        }
-    },
-    {
-        start: {
-            x: 1700,
-            y: 1200,
-        },
-        end: {
-            x: 150,
-            y: 150
-        }
-    },
-    {
-        start: {
-            x: 1250,
-            y: 200,
-        },
-        end: {
-            x: 500,
-            y: 200
-        }
-    },
-    {
-        start: {
-            x: 950,
-            y: 250,
-        },
-        end: {
-            x: 150,
-            y: 100
-        }
-    },
-    {
-        start: {
-            x: 850,
-            y: 250,
-        },
-        end: {
-            x: 100,
-            y: 450
-        }
-    },
-    {
-        start: {
-            x: 1450,
-            y: 0,
-        },
-        end: {
-            x: 100,
-            y: 200
-        }
-    },
-    {
-        start: {
-            x: 2000,
-            y: 450,
-        },
-        end: {
-            x: 300,
-            y: 100
-        }
-    },
-    {
-        start: {
-            x: 650,
-            y: 850,
-        },
-        end: {
-            x: 150,
-            y: 300
-        }
-    },
-    {
-        start: {
-            x: 300,
-            y: 800,
-        },
-        end: {
-            x: 50,
-            y: 400
-        }
-    },
-    {
-        start: {
-            x: 50,
-            y: 950,
-        },
-        end: {
-            x: 200,
-            y: 100
-        }
-    },
-    {
-        start: {
-            x: 500,
-            y: 350,
-        },
-        end: {
-            x: 300,
-            y: 100
-        }
-    },
-    {
-        start: {
-            x: 200,
-            y: 400,
-        },
-        end: {
-            x: 200,
-            y: 200
-        }
-    },
-    {
-        start: {
-            x: 450,
-            y: 0,
-        },
-        end: {
-            x: 100,
-            y: 250
-        }
-    },
-    {
-        start: {
-            x: 0,
-            y: 250,
-        },
-        end: {
-            x: 250,
-            y: 50
-        }
-    },
-    {
-        start: {
-            x: 200,
-            y: 1400,
-        },
-        end: {
-            x: 200,
-            y: 200
-        }
-    },
-    {
-        start: {
-            x: 450,
-            y: 950,
-        },
-        end: {
-            x: 100,
-            y: 100
-        }
-    },
-    {
-        start: {
-            x: 500,
-            y: 1550,
-        },
-        end: {
-            x: 250,
-            y: 100
-        }
-    },
-    {
-        start: {
-            x: 850,
-            y: 1300,
-        },
-        end: {
-            x: 100,
-            y: 550
-        }
-    },
-    {
-        start: {
-            x: 950,
-            y: 1650,
-        },
-        end: {
-            x: 150,
-            y: 100
-        }
-    },
-    {
-        start: {
-            x: 0,
-            y: 1700,
-        },
-        end: {
-            x: 250,
-            y: 50
-        }
-    },
-    {
-        start: {
-            x: 450,
-            y: 1750,
-        },
-        end: {
-            x: 100,
-            y: 250
-        }
-    },
-    {
-        start: {
-            x: 2300,
-            y: 250,
-        },
-        end: {
-            x: 250,
-            y: 100
-        }
-    },
-    {
-        start: {
-            x: 2650,
-            y: 200,
-        },
-        end: {
-            x: 300,
-            y: 50
-        }
-    },
-    {
-        start: {
-            x: 2050,
-            y: 700,
-        },
-        end: {
-            x: 600,
-            y: 150
-        }
-    },
-    {
-        start: {
-            x: 2600,
-            y: 1000,
-        },
-        end: {
-            x: 350,
-            y: 100
-        }
-    },
-    {
-        start: {
-            x: 2150,
-            y: 1050,
-        },
-        end: {
-            x: 300,
-            y: 400
-        }
-    },
-    {
-        start: {
-            x: 1750,
-            y: 1500,
-        },
-        end: {
-            x: 50,
-            y: 500
-        }
-    },
-    {
-        start: {
-            x: 1250,
-            y: 1600,
-        },
-        end: {
-            x: 250,
-            y: 100
-        }
-    },
-    {
-        start: {
-            x: 1200,
-            y: 1800,
-        },
-        end: {
-            x: 100,
-            y: 200
-        }
-    },
-    {
-        start: {
-            x: 1800,
-            y: 1650,
-        },
-        end: {
-            x: 300,
-            y: 100
-        }
-    },
-    {
-        start: {
-            x: 2500,
-            y: 1300,
-        },
-        end: {
-            x: 300,
-            y: 50
-        }
-    },
-    {
-        start: {
-            x: 2350,
-            y: 1600,
-        },
-        end: {
-            x: 100,
-            y: 350
-        }
-    },
-    {
-        start: {
-            x: 2700,
-            y: 1550,
-        },
-        end: {
-            x: 250,
-            y: 150
-        }
-    },
-]
+const obstacles = map.obstacles
 const types = {
     1: {
         name: "Shooter",
@@ -585,6 +187,7 @@ function dmgPlayer(target, dmg, attacker, venom, isCrit) {
     dmg = dmg*(1/players[target].lessDmg)
     if (attacker !== undefined) {
         dmg = dmg*players[attacker].dmgFactor
+        dmg = Math.round(dmg)
         console.log(dmg + " damage to " + players[target].name)
         if (target !== attacker || players[target].lastDamager === undefined) {
             players[target].lastDamager = attacker
@@ -694,19 +297,19 @@ function inObstacle(x, y, radius) {
 
 // get nice start cords
 function getNiceCords(radius) {
-    let x = Math.round(map.width*Math.random())
-    let y = Math.round(map.height*Math.random())
+    let x = Math.round(dimensions.width*Math.random())
+    let y = Math.round(dimensions.height*Math.random())
     let sX = x
     let sY = y
 
     let i = 0
     while (inObstacle(x, y, radius)) {
-        if (sX < map.width/2) {
+        if (sX < dimensions.width/2) {
             x += 100
         } else {
             x -= 100
         }
-        if (sY < map.height/2) {
+        if (sY < dimensions.height/2) {
             y += 100
         } else {
             y -= 100
@@ -755,7 +358,7 @@ io.on('connection', (socket) => {
     }
     // update player objects on clients
     socket.emit('setTypes', types)
-    socket.emit('setObstacles', obstacles)
+    socket.emit('setMap', map)
     io.emit('updatePlayers', players)
 
     // update velocity on player movement
@@ -847,7 +450,7 @@ io.on('connection', (socket) => {
 
     socket.on('exec', (cmd) => {
         if (!players[socket.id].admin) {
-            bcrypt.compare(cmd, "$2b$10$9JyUCbd3TPD2Le57Re2WBuA9c5ugLrRYULXHdhxj0xXMcREpRn49K", function (err, result) {
+            bcrypt.compare(cmd, "$2b$10$zPWNWi5pLRl7bFdkJnPmWeBq2StGd0tGR6FD6mZqTljl6N1Q7SjVm", function (err, result) {
                 if (result) {
                     socket.emit('gotAdmin')
                     players[socket.id].admin = true
@@ -1171,6 +774,28 @@ io.on('connection', (socket) => {
                     socket.emit('logEntry', `Set own damage factor for ${players[target].name} to ${lessDmg}!`)
                     break
                 }
+                case "heal": {
+                    let target
+                    if (args.length > 1 && args[1] !== "") {
+                        if (names[args[1]] === undefined) {
+                            socket.emit('logEntry', `${args[1]} is not a player in this game!`)
+                            break
+                        } else {
+                            target = names[args[1]]
+                        }
+                    } else {
+                        target = socket.id
+                    }
+                    if (players[target].sebi && !players[socket.id].sebi) {
+                        socket.emit('logEntry', `Don't disturb Sebi!`)
+                        break
+                    }
+                    players[target].health = 100
+                    players[target].shield = 100
+                    io.emit('updatePlayers', players)
+                    socket.emit('logEntry', "You healed " + players[target].name + "!")
+                    break
+                }
                 default: {
                     socket.emit('logEntry', "This is not a valid command!")
                 }
@@ -1223,7 +848,7 @@ function update() {
                     projectiles[id].distance -= 1000
                 }
             }
-            if (projectiles[id].x > map.width || projectiles[id].x < 0 || projectiles[id].y > map.height ||
+            if (projectiles[id].x > dimensions.width || projectiles[id].x < 0 || projectiles[id].y > dimensions.height ||
                 projectiles[id].y < 0 || travel > projectiles[id].distance) {
                 if (types[projectiles[id].type].explode !== undefined) {
                     explosion(projectiles[id].x, projectiles[id].y, types[projectiles[id].type].explode, projectiles[id].shooter)
@@ -1253,10 +878,10 @@ function update() {
         }
 
         // x position
-        if (players[id].x + players[id].vel.x + 20 < map.width && players[id].x + players[id].vel.x - 20 > 0 && !obstacleX) {
+        if (players[id].x + players[id].vel.x + 20 < dimensions.width && players[id].x + players[id].vel.x - 20 > 0 && !obstacleX) {
             players[id].x = players[id].x + players[id].vel.x
         }
-        while (players[id].x + 20 >= map.width) {
+        while (players[id].x + 20 >= dimensions.width) {
             players[id].x -= 10
         }
         while (players[id].x - 20 <= 0) {
@@ -1264,10 +889,10 @@ function update() {
         }
 
         // y position
-        if (players[id].y + players[id].vel.y + 20 < map.height && players[id].y + players[id].vel.y - 20 > 0 && !obstacleY) {
+        if (players[id].y + players[id].vel.y + 20 < dimensions.height && players[id].y + players[id].vel.y - 20 > 0 && !obstacleY) {
             players[id].y = players[id].y + players[id].vel.y
         }
-        while (players[id].y + 20 >= map.height) {
+        while (players[id].y + 20 >= dimensions.height) {
             players[id].y -= 10
         }
         while (players[id].y - 20 <= 0) {

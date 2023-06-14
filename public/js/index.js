@@ -48,10 +48,7 @@ let wPressed = false
 let sPressed = false
 
 // map size
-const map = {
-    height: 2000,
-    width: 3000
-}
+let map = undefined
 // cam position (top left corner of screen)
 let cam = {
     x: 0,
@@ -65,7 +62,7 @@ const players = {}
 let admins = []
 const projectiles = {}
 let items = []
-let obstacles = []
+let obstacles = undefined
 let explosions = []
 let damages = []
 
@@ -75,11 +72,7 @@ const recmd = []
 let curCmd = 0
 
 // shooting type names
-let types = {
-    1: "Shooter",
-    2: "Sprayer",
-    3: "Sniper",
-}
+let types = {}
 
 // helper function for fps/tps -> calculates average number of array
 function avg(array) {
@@ -278,8 +271,9 @@ socket.on('updateItems', (backendItems) => {
 })
 
 // set obstacle map
-socket.on('setObstacles', (backendObstacles) => {
-    obstacles = backendObstacles
+socket.on('setMap', (backendMap) => {
+    obstacles = backendMap.obstacles
+    map = backendMap.dimensions
 })
 
 // set types
@@ -363,6 +357,9 @@ socket.on('tps', (tps => {
 let animationId
 function animate() {
     animationId = requestAnimationFrame(animate)
+    if (map === undefined) {
+        return
+    }
     c.beginPath()
     c.fillStyle = 'rgb(50, 50, 50)'
     c.fillRect(0, 0, canvas.width, canvas.height)
@@ -433,6 +430,7 @@ function animate() {
     prCEl.innerText = Object.keys(projectiles).length
     if (!term && !document.querySelector("#terminal").hasAttribute("style")) {
         document.querySelector("#terminal").setAttribute("style", "display: none;")
+        document.querySelector("canvas").focus()
     } else if (term && document.querySelector("#terminal").hasAttribute("style")) {
         document.querySelector("#terminal").removeAttribute("style")
         document.querySelector("#term").focus()
