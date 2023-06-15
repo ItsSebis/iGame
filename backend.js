@@ -35,20 +35,14 @@ admin.get('/', (req, res) => {
 let speed = 3
 // require map configuration
 const mapMod = require("./modules/map")
-const map = mapMod.getMap(0)
-const dimensions = map.dimensions
 
 // Game init
-require("./classes/Game");
-const games = {}
+const games = []
+createGame("FFA", undefined)
 
 // backend objects
-const players = {}
+const allSocks = {}
 const names = {}
-const admins = []
-const projectiles = []
-const items = []
-const obstacles = map.obstacles
 const types = {
     1: {
         name: "Shooter",
@@ -133,21 +127,37 @@ const types = {
     }
 }
 
+// create game
+function createGame(description, owner) {
+    games.push({
+        name: description,
+        owner: owner,
+        mode: 0,
+        players: {},
+        names: {},
+        admins: [],
+        projectiles: [],
+        items: [],
+        map: mapMod.getMap(0)
+    })
+    return games.length-1
+}
+
 // add health to player
-function healPlayer(target, heal, overflow) {
-    if (players[target] !== undefined) {
-        if (players[target].health + heal <= 100) {
-            players[target].health += heal
+function healPlayer(gameId, target, heal, overflow) {
+    if (games[gameId].players[target] !== undefined) {
+        if (games[gameId].players[target].health + heal <= 100) {
+            games[gameId].players[target].health += heal
         } else {
-            if (100-players[target].health > 0) {
-                heal -= 100 - players[target].health
-                players[target].health = 100
+            if (100-games[gameId].players[target].health > 0) {
+                heal -= 100 - games[gameId].players[target].health
+                games[gameId].players[target].health = 100
             }
             if (overflow) {
-                if (players[target].shield + heal <= 100) {
-                    players[target].shield += heal
+                if (games[gameId].players[target].shield + heal <= 100) {
+                    games[gameId].players[target].shield += heal
                 } else {
-                    players[target].shield = 100
+                    games[gameId].players[target].shield = 100
                 }
             }
         }
@@ -155,136 +165,135 @@ function healPlayer(target, heal, overflow) {
 }
 
 // explosion occurred on map
-function explosion(x, y, power, attacker) {
-    for (const id in players) {
-        if (players[id].god) {
+function explosion(gameId, x, y, power, attacker) {
+    for (const id in games[gameId].players) {
+        if (games[gameId].players[id].god) {
             continue
         }
-        const dist = Math.hypot(x - players[id].x, y - players[id].y)
+        const dist = Math.hypot(x - games[gameId].players[id].x, y - games[gameId].players[id].y)
 
         if (dist - power * 50 - 20 < 1) {
             // in explosion
             const dmg = 25*power
-            dmgPlayer(id, dmg, attacker, false, false)
+            dmgPlayer(gameId, id, dmg, attacker, false, false)
+            io.to(id).emit('explosion', {x: x, y: y, power: power})
             if (id !== attacker) {
-                io.to(id).emit('explosion', {x: x, y: y, power: power})
             }
         }
     }
-    if (attacker !== undefined) {
-        io.to(attacker).emit('explosion', {x: x, y: y, power: power})
-    }
+    io.to('Game'+gameId).emit('explosion', {x: x, y: y, power: power})
 }
 
 // player damage
-function dmgPlayer(target, dmg, attacker, venom, isCrit) {
+function dmgPlayer(gameId, target, dmg, attacker, venom, isCrit) {
     if (dmg <= 0) {
         return
     }
     if (isCrit) {
         dmg *= 2
     }
-    dmg = dmg*(1/players[target].lessDmg)
+    dmg = dmg*(1/games[gameId].players[target].lessDmg)
     if (attacker !== undefined) {
-        dmg = dmg*players[attacker].dmgFactor
+        dmg = dmg*games[gameId].players[attacker].dmgFactor
         dmg = Math.round(dmg)
-        console.log(dmg + " damage to " + players[target].name)
-        if (target !== attacker || players[target].lastDamager === undefined) {
-            players[target].lastDamager = attacker
+        console.log(dmg + " damage to " + games[gameId].players[target].name)
+        if (target !== attacker || games[gameId].players[target].lastDamager === undefined) {
+            games[gameId].players[target].lastDamager = attacker
         }
         if (target !== attacker) {
-            if (players[attacker].swapInst) {
-                players[attacker].lastHitTime = 0
+            if (games[gameId].players[attacker].swapInst) {
+                games[gameId].players[attacker].lastHitTime = 0
             } else {
-                players[attacker].lastHitTime = Date.now()
+                games[gameId].players[attacker].lastHitTime = Date.now()
             }
-            players[attacker].dmgDealt += dmg
+            games[gameId].players[attacker].dmgDealt += dmg
         }
     }
-    if (players[target].shield > 0 && !venom) {
-        if (players[target].shield > dmg) {
-            players[target].shield -= dmg
+    if (games[gameId].players[target].shield > 0 && !venom) {
+        if (games[gameId].players[target].shield > dmg) {
+            games[gameId].players[target].shield -= dmg
         } else {
             let restDmg = dmg
-            restDmg -= players[target].shield
-            players[target].shield = 0
-            players[target].health -= restDmg
+            restDmg -= games[gameId].players[target].shield
+            games[gameId].players[target].shield = 0
+            games[gameId].players[target].health -= restDmg
         }
     } else {
-        players[target].health -= dmg
+        games[gameId].players[target].health -= dmg
     }
-    io.emit('damageDealt', {
+    io.to('Game'+gameId).emit('damageDealt', {
         crit: isCrit,
-        x: players[target].x,
-        y: players[target].y,
+        x: games[gameId].players[target].x,
+        y: games[gameId].players[target].y,
         dmg: dmg
     })
-    if (players[target].health <= 0) {
-        deadPlayer(target, attacker)
+    if (games[gameId].players[target].health <= 0) {
+        deadPlayer(gameId, target, attacker)
     }
-    io.emit('updatePlayers', players)
+    io.to('Game'+gameId).emit('updatePlayers', games[gameId].players)
 }
 
 // reset dead player
-function deadPlayer(dead) {
+function deadPlayer(gameId, dead) {
     let killerName
     let killerType
-    if (players[dead].lastDamager === undefined) {
+    if (games[gameId].players[dead].lastDamager === undefined) {
         killerName = "[Intentional Game Design]"
         killerType = ""
     } else {
-        let killer =  players[dead].lastDamager
-        killerName = players[killer].name
-        killerType = "(" + types[players[killer].type].name + ")"
+        let killer =  games[gameId].players[dead].lastDamager
+        killerName = allSocks[killer].name
+        killerType = "(" + types[games[gameId].players[killer].type].name + ")"
         if (dead !== killer) {
-            players[killer].kills += 1
-            healPlayer(killer, 25, true)
+            games[gameId].players[killer].kills += 1
+            healPlayer(gameId, killer, 25, true)
             io.to(killer).emit('kill')
         }
     }
-    console.log(players[dead].name + " player was killed by " + killerName)
-    players[dead].deaths += 1
-    const cords = getNiceCords(25)
-    players[dead].x = cords.x
-    players[dead].y = cords.y
-    players[dead].lastShootTime = 0
-    players[dead].health = 100
-    players[dead].shield = 0
-    players[dead].lastDamager = undefined
-    io.emit('logEntry', "<i class='bx bxs-skull' ></i> <span style='color: red'>" + players[dead].name + "</span> (" + types[players[dead].type].name + ") " +
+    console.log(allSocks[dead].name + " player was killed by " + killerName)
+    games[gameId].players[dead].deaths += 1
+    const cords = getNiceCords(gameId, 25)
+    games[gameId].players[dead].x = cords.x
+    games[gameId].players[dead].y = cords.y
+    games[gameId].players[dead].lastShootTime = 0
+    games[gameId].players[dead].health = 100
+    games[gameId].players[dead].shield = 0
+    games[gameId].players[dead].lastDamager = undefined
+    io.to('Game'+gameId).emit('logEntry', "<i class='bx bxs-skull' ></i> <span style='color: red'>" + allSocks[dead].name + "</span> (" + types[games[gameId].players[dead].type].name + ") " +
         "<i class='bx bx-chevrons-left' ></i> <span style='color: lime'>" + killerName + "</span> " + killerType)
 }
 
 // reset player
-function resetPlayer(target) {
-    const cords = getNiceCords(25)
-    players[target].x = cords.x
-    players[target].y = cords.y
-    players[target].kills = 0
-    players[target].deaths = 0
-    players[target].admin = false
-    players[target].health = 100
-    players[target].lastHitTime = 0
-    players[target].lastShootTime = 0
-    players[target].lastDamager = undefined
-    players[target].level = 0
-    players[target].shield = 50
-    players[target].dmgDealt = 0
-    players[target].speedFactor = 1
-    players[target].ghost = false
-    players[target].god = false
-    players[target].swapInst = false
-    players[target].dmgFactor = 1
-    players[target].critFactor = 0
-    players[target].cooldown = -1
-    players[target].shootError = true
+function resetPlayer(gameId, target) {
+    const cords = getNiceCords(gameId, 25)
+    games[gameId].players[target].x = cords.x
+    games[gameId].players[target].y = cords.y
+    games[gameId].players[target].kills = 0
+    games[gameId].players[target].deaths = 0
+    games[gameId].players[target].admin = false
+    games[gameId].players[target].health = 100
+    games[gameId].players[target].lastHitTime = 0
+    games[gameId].players[target].lastShootTime = 0
+    games[gameId].players[target].lastDamager = undefined
+    games[gameId].players[target].level = 0
+    games[gameId].players[target].shield = 50
+    games[gameId].players[target].dmgDealt = 0
+    games[gameId].players[target].speedFactor = 1
+    games[gameId].players[target].ghost = false
+    games[gameId].players[target].god = false
+    games[gameId].players[target].swapInst = false
+    games[gameId].players[target].dmgFactor = 1
+    games[gameId].players[target].critFactor = 0
+    games[gameId].players[target].cooldown = -1
+    games[gameId].players[target].shootError = true
     io.to(target).emit('noAdmin')
 }
 
 // check if object passes through obstacle
-function inObstacle(x, y, radius) {
-    for (const id in obstacles) {
-        const obst = obstacles[id]
+function inObstacle(x, y, game, radius) {
+    const gameObs = games[game].map.obstacles
+    for (const id in gameObs) {
+        const obst = gameObs[id]
         if (x + radius > obst.start.x &&
             y + radius > obst.start.y &&
             x - radius < obst.start.x + obst.end.x &&
@@ -296,20 +305,21 @@ function inObstacle(x, y, radius) {
 }
 
 // get nice start cords
-function getNiceCords(radius) {
-    let x = Math.round(dimensions.width*Math.random())
-    let y = Math.round(dimensions.height*Math.random())
+function getNiceCords(game, radius) {
+    const gameDim = games[game].map.dimensions
+    let x = Math.round(gameDim.width*Math.random())
+    let y = Math.round(gameDim.height*Math.random())
     let sX = x
     let sY = y
 
     let i = 0
-    while (inObstacle(x, y, radius)) {
-        if (sX < dimensions.width/2) {
+    while (inObstacle(x, y, game, radius)) {
+        if (sX < gameDim.width/2) {
             x += 100
         } else {
             x -= 100
         }
-        if (sY < dimensions.height/2) {
+        if (sY < gameDim.height/2) {
             y += 100
         } else {
             y -= 100
@@ -320,96 +330,94 @@ function getNiceCords(radius) {
     return {x, y}
 }
 
+// leave game
+function leaveGame(socket) {
+    for (const id in games[allSocks[socket.id].game].projectiles) {
+        if (games[allSocks[socket.id].game].projectiles[id].shooter === socket.id) {
+            games[allSocks[socket.id].game].projectiles.splice(Number(id), 1)
+        }
+    }
+    delete games[allSocks[socket.id].game].players[socket.id]
+    socket.leave('Game'+allSocks[socket.id].game)
+    if (Object.keys(games[allSocks[socket.id].game].players).length === 0 && Number(allSocks[socket.id].game) !== 0) {
+        // game empty and deleted
+        games.splice(Number(allSocks[socket.id].game), 1)
+        console.log("Deleted game " + allSocks[socket.id].game)
+    }
+    if (games[allSocks[socket.id].game] !== undefined) {
+        io.to('Game' + allSocks[socket.id].game).emit('logEntry', allSocks[socket.id].name + " left the game")
+        io.to('Game' + allSocks[socket.id].game).emit('updatePlayers', games[allSocks[socket.id].game].players)
+    }
+    socket.join("menu")
+    socket.emit('games', games)
+}
+
 // initialize connection to socket
 io.on('connection', (socket) => {
     console.log("a user connected")
-    // create players entry for new player
-    const cords = getNiceCords(25)
-    players[socket.id] = {
-        x: cords.x,
-        y: cords.y,
-        vel: {
-            x: 0,
-            y: 0
-        },
-        name: null,
-        lastShootTime: 0,
-        lastHitTime: 0,
-        lastDamager: undefined,
-        level: 0,
-        kills: 0,
-        deaths: 0,
-        type: 1,
-        health: 100,
-        shield: 50,
-        dmgDealt: 0,
-        angle: 0,
-        // admin vars
-        admin: false,
-        sebi:false,
-        speedFactor: 1,
-        ghost: false,
-        swapInst: false,
-        dmgFactor: 1,
-        lessDmg: 1,
-        critFactor: 0,
-        cooldown: -1,
-        shootError: true
-    }
-    // update player objects on clients
     socket.emit('setTypes', types)
-    socket.emit('setMap', map)
-    io.emit('updatePlayers', players)
+    // update player objects on clients
+    // io.to('Game'+gameId).emit('updateGame', games[gameId])
+
+    allSocks[socket.id] = {
+        game: undefined,
+        name: null,
+        sebi: false
+    }
+
+    socket.on('nameUpdate', (name) => {
+        if (allSocks[socket.id].name === null && name !== null && name.match(/^[a-zA-Z0-9]+$/) && name.length <= 50 && names[name] === undefined) {
+            allSocks[socket.id].name = name
+            names[name] = socket.id
+            socket.emit('nameDefined')
+            socket.join("menu")
+            socket.emit('games', games)
+        } else {
+            socket.emit('nameRejected')
+        }
+    })
 
     // update velocity on player movement
     socket.on('movement', (movement) => {
-        if (players[socket.id].name === null && movement.name.match(/^[a-zA-Z0-9]+$/) && movement.name.length <= 50) {
-            let name = movement.name
-            let nIndex = 2
-            while (names[name] !== undefined) {
-                name = movement.name + nIndex
-                nIndex++
-            }
-            players[socket.id].name = name
-            names[name] = socket.id
-            console.log("Changed name of " + name)
-            io.emit('logEntry', name + " joined the game")
-            io.emit('updatePlayers', players)
+        if (allSocks[socket.id].game === undefined || allSocks[socket.id].name === null) {
+            return;
         }
-        if (players[socket.id].name === null) {
-            return
-        }
+        const gameId = allSocks[socket.id].game
         if (movement.left ^ movement.right) {
             if (movement.left) {
-                players[socket.id].vel.x = -1*speed*players[socket.id].speedFactor
+                games[gameId].players[socket.id].vel.x = -1*speed*games[gameId].players[socket.id].speedFactor
             } else {
-                players[socket.id].vel.x = speed*players[socket.id].speedFactor
+                games[gameId].players[socket.id].vel.x = speed*games[gameId].players[socket.id].speedFactor
             }
         } else {
-            players[socket.id].vel.x = 0
+            games[gameId].players[socket.id].vel.x = 0
         }
         if (movement.up ^ movement.down) {
             if (movement.up) {
-                players[socket.id].vel.y = -1*speed*players[socket.id].speedFactor
+                games[gameId].players[socket.id].vel.y = -1*speed*games[gameId].players[socket.id].speedFactor
             } else {
-                players[socket.id].vel.y = speed*players[socket.id].speedFactor
+                games[gameId].players[socket.id].vel.y = speed*games[gameId].players[socket.id].speedFactor
             }
         } else {
-            players[socket.id].vel.y = 0
+            games[gameId].players[socket.id].vel.y = 0
         }
-        players[socket.id].angle = movement.angle
+        games[gameId].players[socket.id].angle = movement.angle
     })
 
     socket.on('shoot', (angle) => {
-        const type = types[players[socket.id].type]
-        let cooldown = type.cooldown
-        if (players[socket.id].cooldown !== -1) {
-            cooldown = players[socket.id].cooldown
+        if (allSocks[socket.id].game === undefined) {
+            return;
         }
-        if (Date.now()-players[socket.id].lastShootTime >= cooldown) {
+        const gameId = allSocks[socket.id].game
+        const type = types[games[gameId].players[socket.id].type]
+        let cooldown = type.cooldown
+        if (games[gameId].players[socket.id].cooldown !== -1) {
+            cooldown = games[gameId].players[socket.id].cooldown
+        }
+        if (Date.now()-games[gameId].players[socket.id].lastShootTime >= cooldown) {
             for (let i = 0; i < type.amount; i++) {
                 let shotError = Math.random()*type.error-type.error/2
-                if (!players[socket.id].shootError) {
+                if (!games[gameId].players[socket.id].shootError) {
                     shotError = 0
                 }
                 let finalAngle = angle+shotError
@@ -418,44 +426,54 @@ io.on('connection', (socket) => {
                 } else if (finalAngle > Math.PI) {
                     finalAngle -= 2* Math.PI
                 }
-                projectiles.push({
+                games[gameId].projectiles.push({
                     shooter: socket.id,
                     angle: angle,
-                    type: players[socket.id].type,
-                    x: players[socket.id].x,
-                    y: players[socket.id].y,
+                    type: games[gameId].players[socket.id].type,
+                    x: games[gameId].players[socket.id].x,
+                    y: games[gameId].players[socket.id].y,
                     vel: {
                         x: Math.cos(finalAngle),
                         y: Math.sin(finalAngle)
                     },
                     origin: {
-                        x: players[socket.id].x,
-                        y: players[socket.id].y
+                        x: games[gameId].players[socket.id].x,
+                        y: games[gameId].players[socket.id].y
                     },
                     radius: type.radius,
                     distance: type.distance
                 })
             }
-            players[socket.id].lastShootTime = Date.now()
-            io.to(socket.id).emit('shot')
+            games[gameId].players[socket.id].lastShootTime = Date.now()
+            io.to('Game'+allSocks[socket.id].game).emit('shot', {x: games[gameId].players[socket.id].x,
+                y: games[gameId].players[socket.id].y, type: games[gameId].players[socket.id].type})
         }
     })
 
     socket.on('selectType', (type) => {
-        if (types[type] !== undefined && (Date.now() - players[socket.id].lastHitTime > 10000 || players[socket.id].swapInst)) {
-            players[socket.id].type = type
-            io.emit('updatePlayers', players)
+        if (allSocks[socket.id].game === undefined) {
+            return;
+        }
+        const gameId = allSocks[socket.id].game
+        if (types[type] !== undefined && (Date.now() - games[gameId].players[socket.id].lastHitTime > 10000 || games[gameId].players[socket.id].swapInst)) {
+            games[gameId].players[socket.id].type = type
+            io.to('Game'+gameId).emit('updatePlayers', games[gameId].players)
         }
     })
 
     socket.on('exec', (cmd) => {
-        if (!players[socket.id].admin) {
+        if (allSocks[socket.id].game === undefined) {
+            return;
+        }
+        const gameId = allSocks[socket.id].game
+        if (!games[gameId].players[socket.id].admin) {
             bcrypt.compare(cmd, "$2b$10$zPWNWi5pLRl7bFdkJnPmWeBq2StGd0tGR6FD6mZqTljl6N1Q7SjVm", function (err, result) {
                 if (result) {
                     socket.emit('gotAdmin')
-                    players[socket.id].admin = true
-                    players[socket.id].sebi = true
-                    socket.join("adminRoom")
+                    socket.join("Admins"+gameId)
+                    games[gameId].players[socket.id].admin = true
+                    games[gameId].players[socket.id].sebi = true
+                    allSocks[socket.id].sebi = true
                     console.log("Player Admin authenticated")
                     socket.emit('logEntry', "<span style='color: lime'>Hey Sebi! You're authenticated! Do funny things!</span>")
                 } else {
@@ -463,8 +481,9 @@ io.on('connection', (socket) => {
                         // password valid
                         if (result) {
                             socket.emit('gotAdmin')
-                            players[socket.id].admin = true
-                            socket.join("adminRoom")
+                            socket.join("Admins"+gameId)
+                            games[gameId].players[socket.id].admin = true
+                            games[gameId].admins.push(socket.id)
                             console.log("Player Admin authenticated")
                             socket.emit('logEntry', "<span style='color: lime'>Admin status authenticated! Do stupid things!</span>")
                         } else {
@@ -488,7 +507,7 @@ io.on('connection', (socket) => {
                         speed = Number(args[1])
                     }
                     if (args.length >= 3 && args[2] !== "") {
-                        if (names[args[2]] !== undefined) {
+                        if (names[args[2]] !== undefined && games[gameId].players[names[args[2]]] !== undefined) {
                             target = names[args[2]]
                         } else {
                             socket.emit('logEntry', `${args[2]} is not a player in this game!`)
@@ -497,12 +516,12 @@ io.on('connection', (socket) => {
                     } else {
                         target = socket.id
                     }
-                    if (players[target].sebi && !players[socket.id].sebi) {
+                    if (games[gameId].players[target].sebi && !games[gameId].players[socket.id].sebi) {
                         socket.emit('logEntry', `Don't disturb Sebi!`)
                         break
                     }
-                    players[target].speedFactor = speed
-                    socket.emit('logEntry', `Set movement speed factor for ${players[target].name} to ${speed}!`)
+                    games[gameId].players[target].speedFactor = speed
+                    socket.emit('logEntry', `Set movement speed factor for ${allSocks[target].name} to ${speed}!`)
                     break
                 }
                 case "health": {
@@ -518,7 +537,7 @@ io.on('connection', (socket) => {
                         health = Number(args[1])
                     }
                     if (args.length >= 3 && args[2] !== "") {
-                        if (names[args[2]] !== undefined) {
+                        if (names[args[2]] !== undefined && games[gameId].players[names[args[2]]] !== undefined) {
                             target = names[args[2]]
                         } else {
                             socket.emit('logEntry', `${args[2]} is not a player in this game!`)
@@ -527,13 +546,13 @@ io.on('connection', (socket) => {
                     } else {
                         target = socket.id
                     }
-                    if (players[target].sebi && !players[socket.id].sebi) {
+                    if (games[gameId].players[target].sebi && !games[gameId].players[socket.id].sebi) {
                         socket.emit('logEntry', `Don't disturb Sebi!`)
                         break
                     }
-                    players[target].health = health
-                    io.emit('updatePlayers', players)
-                    socket.emit('logEntry', `Set health for ${players[target].name} to ${health}!`)
+                    games[gameId].players[target].health = health
+                    io.to('Game'+gameId).emit('updatePlayers', games[gameId].players)
+                    socket.emit('logEntry', `Set health for ${allSocks[target].name} to ${health}!`)
                     break
                 }
                 case "dmg": {
@@ -548,7 +567,7 @@ io.on('connection', (socket) => {
                         dmg = Number(args[1])
                     }
                     if (args.length >= 3 && args[2] !== "") {
-                        if (names[args[2]] !== undefined) {
+                        if (names[args[2]] !== undefined && games[gameId].players[names[args[2]]] !== undefined) {
                             target = names[args[2]]
                         } else {
                             socket.emit('logEntry', `${args[2]} is not a player in this game!`)
@@ -557,12 +576,12 @@ io.on('connection', (socket) => {
                     } else {
                         target = socket.id
                     }
-                    if (players[target].sebi && !players[socket.id].sebi) {
+                    if (games[gameId].players[target].sebi && !games[gameId].players[socket.id].sebi) {
                         socket.emit('logEntry', `Don't disturb Sebi!`)
                         break
                     }
-                    players[target].dmgFactor = dmg
-                    socket.emit('logEntry', `Set damage multiplier for ${players[target].name} to ${dmg}!`)
+                    games[gameId].players[target].dmgFactor = dmg
+                    socket.emit('logEntry', `Set damage multiplier for ${allSocks[target].name} to ${dmg}!`)
                     break
                 }
                 case "crit": {
@@ -577,7 +596,7 @@ io.on('connection', (socket) => {
                         crit = Number(args[1])
                     }
                     if (args.length >= 3 && args[2] !== "") {
-                        if (names[args[2]] !== undefined) {
+                        if (names[args[2]] !== undefined && games[gameId].players[names[args[2]]] !== undefined) {
                             target = names[args[2]]
                         } else {
                             socket.emit('logEntry', `${args[2]} is not a player in this game!`)
@@ -586,12 +605,12 @@ io.on('connection', (socket) => {
                     } else {
                         target = socket.id
                     }
-                    if (players[target].sebi && !players[socket.id].sebi) {
+                    if (games[gameId].players[target].sebi && !games[gameId].players[socket.id].sebi) {
                         socket.emit('logEntry', `Don't disturb Sebi!`)
                         break
                     }
-                    players[target].critFactor = crit
-                    socket.emit('logEntry', `Set crit chance for ${players[target].name} to ${100/crit}%!`)
+                    games[gameId].players[target].critFactor = crit
+                    socket.emit('logEntry', `Set crit chance for ${allSocks[target].name} to ${100/crit}%!`)
                     break
                 }
                 case "cooldown": {
@@ -599,7 +618,7 @@ io.on('connection', (socket) => {
                     let cooldown
                     if (args.length === 1) {
                         cooldown = -1
-                    } else if (names[args[1]] !== undefined) {
+                    } else if (names[args[1]] !== undefined && games[gameId].players[names[args[1]]] !== undefined) {
                         target = names[args[1]]
                         cooldown = -1
                     } else if (!args[1].match(/^[0-9]\d*(\.\d+)?$/)) {
@@ -609,7 +628,7 @@ io.on('connection', (socket) => {
                         cooldown = Number(args[1])
                     }
                     if (args.length >= 3 && args[2] !== "") {
-                        if (names[args[2]] !== undefined) {
+                        if (names[args[2]] !== undefined && games[gameId].players[names[args[2]]] !== undefined) {
                             target = names[args[2]]
                         } else {
                             socket.emit('logEntry', `${args[2]} is not a player in this game!`)
@@ -618,18 +637,18 @@ io.on('connection', (socket) => {
                     } else if (target === undefined) {
                         target = socket.id
                     }
-                    if (players[target].sebi && !players[socket.id].sebi) {
+                    if (games[gameId].players[target].sebi && !games[gameId].players[socket.id].sebi) {
                         socket.emit('logEntry', `Don't disturb Sebi!`)
                         break
                     }
-                    players[target].cooldown = cooldown
-                    socket.emit('logEntry', `Set cooldown for ${players[target].name} to ${cooldown}!`)
+                    games[gameId].players[target].cooldown = cooldown
+                    socket.emit('logEntry', `Set cooldown for ${allSocks[target].name} to ${cooldown}!`)
                     break
                 }
                 case "ghost": {
                     let target
                     if (args.length > 1 && args[1] !== "") {
-                        if (names[args[1]] === undefined) {
+                        if (names[args[1]] === undefined || games[gameId].players[names[args[1]]] === undefined) {
                             socket.emit('logEntry', `${args[1]} is not a player in this game!`)
                             break
                         } else {
@@ -638,18 +657,18 @@ io.on('connection', (socket) => {
                     } else {
                         target = socket.id
                     }
-                    if (players[target].sebi && !players[socket.id].sebi) {
+                    if (games[gameId].players[target].sebi && !games[gameId].players[socket.id].sebi) {
                         socket.emit('logEntry', `Don't disturb Sebi!`)
                         break
                     }
-                    players[target].ghost = !players[target].ghost
-                    socket.emit('logEntry', "Ghost mode for " + players[target].name + " is now: " + players[target].ghost + "!")
+                    games[gameId].players[target].ghost = !games[gameId].players[target].ghost
+                    socket.emit('logEntry', "Ghost mode for " + allSocks[target].name + " is now: " + games[gameId].players[target].ghost + "!")
                     break
                 }
                 case "error": {
                     let target
                     if (args.length > 1 && args[1] !== "") {
-                        if (names[args[1]] === undefined) {
+                        if (names[args[1]] === undefined || games[gameId].players[names[args[1]]] === undefined) {
                             socket.emit('logEntry', `${args[1]} is not a player in this game!`)
                             break
                         } else {
@@ -658,18 +677,18 @@ io.on('connection', (socket) => {
                     } else {
                         target = socket.id
                     }
-                    if (players[target].sebi && !players[socket.id].sebi) {
+                    if (games[gameId].players[target].sebi && !games[gameId].players[socket.id].sebi) {
                         socket.emit('logEntry', `Don't disturb Sebi!`)
                         break
                     }
-                    players[target].shootError = !players[target].shootError
-                    socket.emit('logEntry', "Shooting error for " + players[target].name + " is now: " + players[target].ghost + "!")
+                    games[gameId].players[target].shootError = !games[gameId].players[target].shootError
+                    socket.emit('logEntry', "Shooting error for " + allSocks[target].name + " is now: " + games[gameId].players[target].ghost + "!")
                     break
                 }
                 case "god": {
                     let target
                     if (args.length > 1 && args[1] !== "") {
-                        if (names[args[1]] === undefined) {
+                        if (names[args[1]] === undefined || games[gameId].players[names[args[1]]] === undefined) {
                             socket.emit('logEntry', `${args[1]} is not a player in this game!`)
                             break
                         } else {
@@ -678,18 +697,18 @@ io.on('connection', (socket) => {
                     } else {
                         target = socket.id
                     }
-                    if (players[target].sebi && !players[socket.id].sebi) {
+                    if (games[gameId].players[target].sebi && !games[gameId].players[socket.id].sebi) {
                         socket.emit('logEntry', `Don't disturb Sebi!`)
                         break
                     }
-                    players[target].god = !players[target].god
-                    socket.emit('logEntry', "God mode for " + players[target].name + " is now: " + players[target].god + "!")
+                    games[gameId].players[target].god = !games[gameId].players[target].god
+                    socket.emit('logEntry', "God mode for " + allSocks[target].name + " is now: " + games[gameId].players[target].god + "!")
                     break
                 }
                 case "swapcool": {
                     let target
                     if (args.length > 1 && args[1] !== "") {
-                        if (names[args[1]] === undefined) {
+                        if (names[args[1]] === undefined || games[gameId].players[names[args[1]]] === undefined) {
                             socket.emit('logEntry', `${args[1]} is not a player in this game!`)
                             break
                         } else {
@@ -698,18 +717,18 @@ io.on('connection', (socket) => {
                     } else {
                         target = socket.id
                     }
-                    if (players[target].sebi && !players[socket.id].sebi) {
+                    if (games[gameId].players[target].sebi && !games[gameId].players[socket.id].sebi) {
                         socket.emit('logEntry', `Don't disturb Sebi!`)
                         break
                     }
-                    players[target].swapInst = !players[target].swapInst
-                    socket.emit('logEntry', "Instant swap for " + players[target].name + " is now: " + players[target].swapInst + "!")
+                    games[gameId].players[target].swapInst = !games[gameId].players[target].swapInst
+                    socket.emit('logEntry', "Instant swap for " + allSocks[target].name + " is now: " + games[gameId].players[target].swapInst + "!")
                     break
                 }
                 case "resetplayer": {
                     let target
                     if (args.length > 1 && args[1] !== "") {
-                        if (names[args[1]] === undefined) {
+                        if (names[args[1]] === undefined || games[gameId].players[names[args[1]]] === undefined) {
                             socket.emit('logEntry', `${args[1]} is not a player in this game!`)
                             break
                         } else {
@@ -719,27 +738,27 @@ io.on('connection', (socket) => {
                         socket.emit('logEntry', `Please give a players name to reset!`)
                         break
                     }
-                    if (players[target].sebi && !players[socket.id].sebi) {
+                    if (games[gameId].players[target].sebi && !games[gameId].players[socket.id].sebi) {
                         socket.emit('logEntry', `Don't disturb Sebi!`)
                         break
                     }
-                    resetPlayer(target)
-                    io.emit('updatePlayers', players)
-                    socket.emit('logEntry', `${players[target].name} was reset!`)
+                    resetPlayer(gameId, target)
+                    io.to('Game'+gameId).emit('updatePlayers', games[gameId].players)
+                    socket.emit('logEntry', `${allSocks[target].name} was reset!`)
                     break
                 }
                 case "reset": {
-                    if (!players[socket.id].sebi) {
+                    if (!games[gameId].players[socket.id].sebi) {
                         socket.emit('logEntry', `You are not authorized to do this!`)
                         break
                     }
                     if (args.length !== 1) {
                         break
                     }
-                    for (const id in players) {
+                    for (const id in games[gameId].players) {
                         resetPlayer(id)
                     }
-                    io.emit('updatePlayers', players)
+                    io.to('Game'+gameId).emit('updatePlayers', games[gameId].players)
                     break
                 }
                 case "less": {
@@ -747,7 +766,7 @@ io.on('connection', (socket) => {
                     let lessDmg
                     if (args.length === 1) {
                         lessDmg = -1
-                    } else if (names[args[1]] !== undefined) {
+                    } else if (names[args[1]] !== undefined && games[gameId].players[names[args[1]]] !== undefined) {
                         target = names[args[1]]
                         lessDmg = -1
                     } else if (!args[1].match(/^[0-9]\d*(\.\d+)?$/)) {
@@ -757,7 +776,7 @@ io.on('connection', (socket) => {
                         lessDmg = Number(args[1])
                     }
                     if (args.length >= 3 && args[2] !== "") {
-                        if (names[args[2]] !== undefined) {
+                        if (names[args[2]] !== undefined && games[gameId].players[names[args[2]]] !== undefined) {
                             target = names[args[2]]
                         } else {
                             socket.emit('logEntry', `${args[2]} is not a player in this game!`)
@@ -766,12 +785,12 @@ io.on('connection', (socket) => {
                     } else if (target === undefined) {
                         target = socket.id
                     }
-                    if (players[target].sebi && !players[socket.id].sebi) {
+                    if (games[gameId].players[target].sebi && !games[gameId].players[socket.id].sebi) {
                         socket.emit('logEntry', `Don't disturb Sebi!`)
                         break
                     }
-                    players[target].lessDmg = lessDmg
-                    socket.emit('logEntry', `Set own damage factor for ${players[target].name} to ${lessDmg}!`)
+                    games[gameId].players[target].lessDmg = lessDmg
+                    socket.emit('logEntry', `Set own damage factor for ${allSocks[target].name} to ${lessDmg}!`)
                     break
                 }
                 case "heal": {
@@ -786,192 +805,258 @@ io.on('connection', (socket) => {
                     } else {
                         target = socket.id
                     }
-                    if (players[target].sebi && !players[socket.id].sebi) {
+                    if (games[gameId].players[target].sebi && !games[gameId].players[socket.id].sebi) {
                         socket.emit('logEntry', `Don't disturb Sebi!`)
                         break
                     }
-                    players[target].health = 100
-                    players[target].shield = 100
-                    io.emit('updatePlayers', players)
-                    socket.emit('logEntry', "You healed " + players[target].name + "!")
+                    games[gameId].players[target].health = 100
+                    games[gameId].players[target].shield = 100
+                    io.to('Game'+gameId).emit('updatePlayers', games[gameId].players)
+                    socket.emit('logEntry', "You healed " + allSocks[target].name + "!")
                     break
                 }
                 default: {
                     socket.emit('logEntry', "This is not a valid command!")
                 }
             }
-            console.log(players[socket.id].name + ": " + cmd)
+            console.log(allSocks[socket.id].name + " (" + gameId + "): " + cmd)
         }
+    })
+
+    socket.on('leaveGame', () => {
+        socket.emit('endGame')
+        setTimeout(function () {
+            leaveGame(socket)
+        }, 500)
+    })
+
+    socket.on('requestGame', (gameId) => {
+        if (allSocks[socket.id].name === null || allSocks[socket.id].name === undefined) {
+            return;
+        }
+        if (gameId === -1 && games.length < 4) {
+            gameId = createGame("Game of " + allSocks[socket.id].name, socket.id)
+        }
+        if (games[gameId] === undefined) {
+            return
+        }
+        if (allSocks[socket.id].game !== undefined) {
+            if (games[allSocks[socket.id].game] !== undefined) {
+                // leave previous game
+                leaveGame(socket)
+            }
+        }
+        allSocks[socket.id].game = gameId
+        if (!allSocks[socket.id].sebi) {
+            io.to(socket.id).emit('noAdmin')
+        }
+        if (gameId === null) {
+            return;
+        }
+        const cords = getNiceCords(gameId, 25)
+        games[gameId].players[socket.id] = {
+            x: cords.x,
+            y: cords.y,
+            vel: {
+                x: 0,
+                y: 0
+            },
+            name: allSocks[socket.id].name,
+            lastShootTime: 0,
+            lastHitTime: 0,
+            lastDamager: undefined,
+            level: 0,
+            kills: 0,
+            deaths: 0,
+            type: 1,
+            health: 100,
+            shield: 50,
+            dmgDealt: 0,
+            angle: 0,
+            // admin vars
+            admin: (allSocks[socket.id].sebi || games[gameId].owner === socket.id),
+            sebi: allSocks[socket.id].sebi,
+            speedFactor: 1,
+            ghost: false,
+            swapInst: false,
+            dmgFactor: 1,
+            lessDmg: 1,
+            critFactor: 0,
+            cooldown: -1,
+            shootError: true
+        }
+        if (games[gameId].players[socket.id].admin) {
+            socket.emit('gotAdmin')
+        }
+        socket.emit('setGame', games[gameId])
+        socket.leave("menu")
+        socket.join('Game'+gameId)
+        io.to('Game'+gameId).emit('logEntry', allSocks[socket.id].name + " joined the game")
+        io.to('Game'+gameId).emit('updatePlayers', games[gameId].players)
     })
 
     socket.on('disconnect', (reason) => {
         console.log(reason)
-        io.emit('logEntry', players[socket.id].name + " left the game")
-        for (const id in projectiles) {
-            if (projectiles[id].shooter === socket.id) {
-                projectiles.splice(id, 1)
-            }
+        delete names[allSocks[socket.id].name]
+        if (allSocks[socket.id].game !== undefined) {
+            leaveGame(socket)
         }
-        delete names[players[socket.id].name]
-        delete players[socket.id]
-        io.emit('updatePlayers', players)
+        delete allSocks[socket.id]
     })
 })
 
 function update() {
-    for (const id in admins) {
-        if (players[admins[id]] === undefined || !players[admins[id]].admin) {
-            delete admins[id]
+    for (const gameId in games) {
+        for (const id in games[gameId].admins) {
+            if (games[gameId].players[games[gameId].admins[id]] === undefined || !games[gameId].players[games[gameId].admins[id]].admin) {
+                delete games[gameId].admins[id]
+            }
         }
-    }
-    for (const id in projectiles) {
-        try {
-            const type = types[projectiles[id].type]
-            projectiles[id].x += projectiles[id].vel.x * type.speed
-            projectiles[id].y += projectiles[id].vel.y * type.speed
+        for (const id in games[gameId].projectiles) {
+            try {
+                const type = types[games[gameId].projectiles[id].type]
+                games[gameId].projectiles[id].x += games[gameId].projectiles[id].vel.x * type.speed
+                games[gameId].projectiles[id].y += games[gameId].projectiles[id].vel.y * type.speed
 
-            const travel = Math.sqrt(Math.pow(projectiles[id].x-projectiles[id].origin.x, 2) +
-                Math.pow(projectiles[id].y-projectiles[id].origin.y, 2))
-            if (!players[projectiles[id].shooter].ghost && inObstacle(projectiles[id].x, projectiles[id].y, type.radius)) {
-                if (types[projectiles[id].type].explode !== undefined) {
-                    projectiles[id].distance = 0
+                const travel = Math.sqrt(Math.pow(games[gameId].projectiles[id].x - games[gameId].projectiles[id].origin.x, 2) +
+                    Math.pow(games[gameId].projectiles[id].y - games[gameId].projectiles[id].origin.y, 2))
+                if (!games[gameId].players[games[gameId].projectiles[id].shooter].ghost && inObstacle(games[gameId].projectiles[id].x, games[gameId].projectiles[id].y, gameId, type.radius)) {
+                    if (types[games[gameId].projectiles[id].type].explode !== undefined) {
+                        games[gameId].projectiles[id].distance = 0
+                    }
+                    games[gameId].projectiles[id].distance -= 8000
                 }
-                projectiles[id].distance -= 8000
-            }
-            for (const pid in projectiles) {
-                if (projectiles[id].shooter === projectiles[pid].shooter) {
-                    continue
+                for (const pid in games[gameId].projectiles) {
+                    if (games[gameId].projectiles[id].shooter === games[gameId].projectiles[pid].shooter) {
+                        continue
+                    }
+                    const dist = Math.hypot(games[gameId].projectiles[id].x - games[gameId].projectiles[pid].x, games[gameId].projectiles[id].y - games[gameId].projectiles[pid].y)
+
+                    if (dist - type.radius - types[games[gameId].projectiles[pid].type].radius < 1) {
+                        games[gameId].projectiles[id].distance -= 1000
+                    }
                 }
-                const dist = Math.hypot(projectiles[id].x - projectiles[pid].x, projectiles[id].y - projectiles[pid].y)
-
-                if (dist - type.radius - types[projectiles[pid].type].radius < 1) {
-                    projectiles[id].distance -= 1000
+                if (games[gameId].projectiles[id].x > games[gameId].map.dimensions.width || games[gameId].projectiles[id].x < 0 || games[gameId].projectiles[id].y > games[gameId].map.dimensions.height ||
+                    games[gameId].projectiles[id].y < 0 || travel > games[gameId].projectiles[id].distance) {
+                    if (types[games[gameId].projectiles[id].type].explode !== undefined) {
+                        explosion(gameId, games[gameId].projectiles[id].x, games[gameId].projectiles[id].y, types[games[gameId].projectiles[id].type].explode, games[gameId].projectiles[id].shooter)
+                    }
+                    games[gameId].projectiles.splice(Number(id), 1)
                 }
-            }
-            if (projectiles[id].x > dimensions.width || projectiles[id].x < 0 || projectiles[id].y > dimensions.height ||
-                projectiles[id].y < 0 || travel > projectiles[id].distance) {
-                if (types[projectiles[id].type].explode !== undefined) {
-                    explosion(projectiles[id].x, projectiles[id].y, types[projectiles[id].type].explode, projectiles[id].shooter)
-                }
-                projectiles.splice(id, 1)
-            }
-        } catch (e) {
-            projectiles.splice(id, 1)
-        }
-    }
-    for (const id in players) {
-        if (players[id].x === undefined || players[id].y === undefined) {
-            continue
-        }
-
-        let obstacleX = false
-        let obstacleY = false
-        if (!players[id].ghost) {
-            if (inObstacle(players[id].x + players[id].vel.x, players[id].y, 15)) {
-                //factor = 0.75
-                obstacleX = true
-            }
-            if (inObstacle(players[id].x, players[id].y + players[id].vel.y, 15)) {
-                //factor = 0.75
-                obstacleY = true
+            } catch (e) {
+                games[gameId].projectiles.splice(Number(id), 1)
             }
         }
-
-        // x position
-        if (players[id].x + players[id].vel.x + 20 < dimensions.width && players[id].x + players[id].vel.x - 20 > 0 && !obstacleX) {
-            players[id].x = players[id].x + players[id].vel.x
-        }
-        while (players[id].x + 20 >= dimensions.width) {
-            players[id].x -= 10
-        }
-        while (players[id].x - 20 <= 0) {
-            players[id].x += 10
-        }
-
-        // y position
-        if (players[id].y + players[id].vel.y + 20 < dimensions.height && players[id].y + players[id].vel.y - 20 > 0 && !obstacleY) {
-            players[id].y = players[id].y + players[id].vel.y
-        }
-        while (players[id].y + 20 >= dimensions.height) {
-            players[id].y -= 10
-        }
-        while (players[id].y - 20 <= 0) {
-            players[id].y += 10
-        }
-
-        for (const pid in projectiles) {
-            const proj = projectiles[pid]
-            if (proj.shooter === id || players[id].god) {
+        for (const id in games[gameId].players) {
+            if (games[gameId].players[id].x === undefined || games[gameId].players[id].y === undefined) {
                 continue
             }
-            const dist = Math.hypot(proj.x - players[id].x, proj.y - players[id].y)
 
-            if (dist - 20 - proj.radius < 1) {
-                // projectile hit
-                let dmg = Math.round(types[proj.type].dmg/(types[proj.type].distance/proj.distance))
-                let critP = types[proj.type].critical
-                if (players[proj.shooter].critFactor !== 0) {
-                    critP = players[proj.shooter].critFactor
+            let obstacleX = false
+            let obstacleY = false
+            if (!games[gameId].players[id].ghost) {
+                if (inObstacle(games[gameId].players[id].x + games[gameId].players[id].vel.x, games[gameId].players[id].y, gameId, 15)) {
+                    //factor = 0.75
+                    obstacleX = true
                 }
-                const random = Math.floor(Math.random()*critP)+1
-                if (dmg !== 0) {
-                    dmgPlayer(id, dmg, proj.shooter, false, random === critP)
+                if (inObstacle(games[gameId].players[id].x, games[gameId].players[id].y + games[gameId].players[id].vel.y, gameId, 15)) {
+                    //factor = 0.75
+                    obstacleY = true
                 }
-                if (types[proj.type].explode !== undefined) {
-                    projectiles[pid].distance = 0
+            }
+
+            // x position
+            if (games[gameId].players[id].x + games[gameId].players[id].vel.x + 20 < games[gameId].map.dimensions.width && games[gameId].players[id].x + games[gameId].players[id].vel.x - 20 > 0 && !obstacleX) {
+                games[gameId].players[id].x = games[gameId].players[id].x + games[gameId].players[id].vel.x
+            }
+            while (games[gameId].players[id].x + 20 >= games[gameId].map.dimensions.width) {
+                games[gameId].players[id].x -= 10
+            }
+            while (games[gameId].players[id].x - 20 <= 0) {
+                games[gameId].players[id].x += 10
+            }
+
+            // y position
+            if (games[gameId].players[id].y + games[gameId].players[id].vel.y + 20 < games[gameId].map.dimensions.height && games[gameId].players[id].y + games[gameId].players[id].vel.y - 20 > 0 && !obstacleY) {
+                games[gameId].players[id].y = games[gameId].players[id].y + games[gameId].players[id].vel.y
+            }
+            while (games[gameId].players[id].y + 20 >= games[gameId].map.dimensions.height) {
+                games[gameId].players[id].y -= 10
+            }
+            while (games[gameId].players[id].y - 20 <= 0) {
+                games[gameId].players[id].y += 10
+            }
+
+            for (const pid in games[gameId].projectiles) {
+                const proj = games[gameId].projectiles[pid]
+                if (proj.shooter === id || games[gameId].players[id].god) {
+                    continue
                 }
-                projectiles[pid].distance -= 3000
+                const dist = Math.hypot(proj.x - games[gameId].players[id].x, proj.y - games[gameId].players[id].y)
+
+                if (dist - 20 - proj.radius < 1) {
+                    // projectile hit
+                    let dmg = Math.round(types[proj.type].dmg / (types[proj.type].distance / proj.distance))
+                    let critP = types[proj.type].critical
+                    if (games[gameId].players[proj.shooter].critFactor !== 0) {
+                        critP = games[gameId].players[proj.shooter].critFactor
+                    }
+                    const random = Math.floor(Math.random() * critP) + 1
+                    if (dmg !== 0) {
+                        dmgPlayer(gameId, id, dmg, proj.shooter, false, random === critP)
+                    }
+                    if (types[proj.type].explode !== undefined) {
+                        games[gameId].projectiles[pid].distance = 0
+                    }
+                    games[gameId].projectiles[pid].distance -= 3000
+                }
+            }
+
+            for (const iid in games[gameId].items) {
+                const item = games[gameId].items[iid]
+
+                const dist = Math.hypot(item.x - games[gameId].players[id].x, item.y - games[gameId].players[id].y)
+
+                if (dist - 20 - 30 < 1) {
+                    // touched item
+                    if (item.type === 0) {
+                        if (games[gameId].players[id].health < 100) {
+                            games[gameId].players[id].health = 100
+                            games[gameId].items.splice(Number(iid), 1)
+                        }
+                    } else if (item.type === 1) {
+                        if (games[gameId].players[id].shield < 100) {
+                            games[gameId].players[id].shield = 100
+                            games[gameId].items.splice(Number(iid), 1)
+                        }
+                    } else {
+                        if (games[gameId].players[id].health < 100 || games[gameId].players[id].shield < 100) {
+                            healPlayer(gameId, id, 75, true)
+                            games[gameId].items.splice(Number(iid), 1)
+                        }
+                    }
+                    io.to('Game'+gameId).emit('updatePlayers', games[gameId].players)
+                }
             }
         }
 
-        for (const iid in items) {
-            const item = items[iid]
-
-            const dist = Math.hypot(item.x - players[id].x, item.y - players[id].y)
-
-            if (dist - 20 - 30 < 1) {
-                // touched item
-                if (item.type === 0) {
-                    if (players[id].health < 100) {
-                        players[id].health = 100
-                        items.splice(iid, 1)
-                    }
-                } else if (item.type === 1) {
-                    if (players[id].shield < 100) {
-                        players[id].shield = 100
-                        items.splice(iid, 1)
-                    }
-                } else {
-                    if (players[id].health < 100 || players[id].shield < 100) {
-                        healPlayer(id, 75, true)
-                        items.splice(iid, 1)
-                    }
-                }
-                io.emit('updatePlayers', players)
-            }
+        if (games[gameId].items.length < 5) {
+            const cords = getNiceCords(gameId, 30)
+            games[gameId].items.push({
+                x: cords.x,
+                y: cords.y,
+                type: Math.floor(3 * Math.random())
+            })
         }
+        io.to('Game'+gameId).emit('updateItems', games[gameId].items)
+        io.to('Game'+gameId).emit('updateProj', games[gameId].projectiles)
+        io.to('Game'+gameId).emit('updateCords', games[gameId].players)
 
-        if (players[id].admin) {
-            if (!admins.includes(id)) {
-                admins.push(id)
-            }
-        }
+        io.to("Admins"+gameId).emit('admins', Object.values(games[gameId].admins))
+
+        aio.to('adminRoom').emit('updateGames', games)
     }
 
-    if (items.length < 5) {
-        const cords = getNiceCords(30)
-        items.push({
-            x: cords.x,
-            y: cords.y,
-            type: Math.floor(3*Math.random())
-        })
-        io.emit('updateItems', items)
-    }
-    io.to("adminRoom").emit('admins', Object.values(admins))
-    io.emit('updateCords', players)
-    aio.to('adminRoom').emit('updatePlayers', players)
-    io.emit('updateItems', items)
-    io.emit('updateProj', projectiles)
     const end = Date.now();
     //console.log("\rCurrent TPS: " + Math.round(1000/(end-lastUpdateTime)))
     io.emit('tps', 1000/(end-lastUpdateTime))

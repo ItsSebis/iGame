@@ -12,6 +12,8 @@
             */
             -ms-user-select: none;
             user-select: none;
+
+            font-family: 'Roboto Mono', monospace;
         }
         body {
             margin: 0;
@@ -21,7 +23,7 @@
             outline: none;
             background-color: lightgray;
             height: 40px;
-            width: 120px;
+            width: 180px;
             border: lightgray solid;
             border-radius: 12px;
             margin: 5px;
@@ -125,8 +127,56 @@
         #shield::-webkit-progress-value {
             background-color: #5e90da; 
         }
+        #menu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            background-color: darkgray;
+            text-align: center;
+        }
+        #menu h1 {
+            font-size: 5rem;
+        }
+        #menu input {
+            width: 250px;
+            height: 35px;
+            background: none;
+            border: solid gray;
+            border-radius: 12px;
+            text-align: center;
+            font-size: 20px;
+        }
+        #menu input:focus {
+            border-color: blue;
+        }
+        #menuGames {
+            max-width: 60%;
+            display: flex;
+            margin: 0 auto;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .gameEl {
+            cursor: pointer;
+            width: 150px;
+            height: 150px;
+            background-color: #3c3c3c;
+            margin: 15px;
+            border: solid #3c3c3c;
+            border-radius: 20px;
+            color: #fafafa;
+        }
     </style>
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100&amp;family=Roboto+Mono:wght@300&amp;display=swap" rel="stylesheet">
     <link rel="icon" href="lilsharky.png">
     <title>iGame</title>
 </head>
@@ -135,7 +185,6 @@
     <span>Client FPS: <span id="fpsEL">0</span></span><br>
     <span>Server TPS: <span id="tpsEL">0</span></span><br>
     <span>Mouse°: <span id="mEL">0</span></span><br>
-    <span>Mouse: <span id="moCEL">0</span></span><br>
     <span>X: <span id="xEL">0</span></span><br>
     <span>Y: <span id="yEL">0</span></span><br>
     <span>X-Cam: <span id="xCEL">0</span></span><br>
@@ -159,6 +208,9 @@
 <div style="position: absolute; bottom: 0; color: white; padding: 8px; font-family: sans-serif; font-size: 18px; user-select: none; text-align: center" id="log"></div>
 <div id="typeSwitcher" style="position: absolute; bottom: 0; right: 0; color: white; padding: 8px; font-family: sans-serif; font-size: 24px; user-select: none; text-align: center"></div>
 <div style="position: absolute; top: 0; left: 50%; transform: translate(-50%, 0); color: white; padding: 8px; font-family: sans-serif; font-size: 24px; user-select: none; text-align: center">
+    <h3 style="margin: 0" id="server"></h3>
+    <h6 style="margin: 0" id="owner"></h6>
+    <p style="cursor: pointer" onclick="socket.emit('leaveGame')"><i class='bx bx-exit'></i></p>
     <span><i class='bx bxs-bullseye' ></i> <span id="kills" style="color: lime; font-weight: 800">0</span> | </span>
     <span><i class='bx bxs-skull' ></i> <span id="deaths" style="color: red; font-weight: 800">0</span></span>
 </div>
@@ -180,10 +232,16 @@
     const queryString = window.location.search;
     const urlParams = new URLSearchParams(queryString);
     let ign = urlParams.get("name")
-    while (ign === undefined || ign === null || !ign.match(/^[a-zA-Z0-9]+$/) || ign.length > 50) {
-        ign = prompt("Please give a nickname")
-    }
 </script>
+<div id="menu">
+    <h1 style="margin-bottom: 0">Menu</h1>
+    <h3 style="margin: 0 0 0 10px" id="ownName"></h3>
+    <form action="javascript:void(0);" id="ignForm" onsubmit="socket.emit('nameUpdate', document.querySelector('#ignInput').value); ign=document.querySelector('#ignInput').value">
+        <label for="ignInput"></label><input id="ignInput" placeholder="Nickname" value=""><br>
+        <button type="submit">Nick!</button>
+    </form>
+    <div id="menuGames"></div>
+</div>
 <script
         src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.10.2/gsap.min.js"
         integrity="sha512-kVlGhj2qFy+KBCFuvjBJTGUMxbdqJKs4yK2jh0e0VPhWUPiPC87bzm4THmaaIee3Oj7j6sDpTTgm2EPPiESqBg=="
