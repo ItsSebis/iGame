@@ -4,6 +4,7 @@ const c = canvas.getContext('2d')
 
 // socket.io connection
 let socket = io()
+socket.emit('nameUpdate', ign)
 
 // client fps and server tps stat elements
 const fpsEl = document.querySelector('#fpsEl')
@@ -58,6 +59,7 @@ let ego = undefined
 
 // frontend objects
 let game = undefined
+let nameSet = false
 const players = {}
 let admins = []
 const projectiles = {}
@@ -206,15 +208,6 @@ socket.on('updatePlayers', (backendPlayers) => {
             delete players[id]
         }
     }
-    const movement = {
-        angle: mouseAngle,
-        name: ign,
-        left: aPressed,
-        right: dPressed,
-        up: wPressed,
-        down: sPressed
-    }
-    socket.emit('movement', movement)
     nameEl.innerText = players[ego].name
     killEl.innerText = players[ego].kills
     deathEl.innerText = players[ego].deaths
@@ -273,17 +266,44 @@ socket.on('updateItems', (backendItems) => {
 // receive game
 socket.on('setGame', (backendGame) => {
     game = backendGame
+    if (game !== undefined) {
+        obstacles = backendGame.map.obstacles
+        map = backendGame.map.dimensions
+        if (!document.querySelector("#menu").hasAttribute("style")) {
+            document.querySelector("#menu").setAttribute("style", "display: none")
+        }
+        document.querySelector("#server").innerText = backendGame.name
+        if (backendGame.owner !== undefined && game.players[backendGame.owner] !== undefined) {
+            document.querySelector("#owner").innerText = game.players[backendGame.owner].name
+        } else {
+            document.querySelector("#owner").innerText = ""
+        }
+    } else {
+        document.querySelector("#server").innerText = ""
+        document.querySelector("#owner").innerText = ""
+        if (document.querySelector("#menu").hasAttribute("style")) {
+            document.querySelector("#menu").removeAttribute("style")
+        }
+    }
+})
+
+// name on server
+socket.on('nameDefined', () => {
+    document.querySelector('#ignForm').setAttribute("style", "display: none")
+    document.querySelector('#ownName').innerText = "\""+ign+"\""
+    nameSet = true
+    // join game
+    //socket.emit('requestGame', 0)
 })
 
 // destroy game
 socket.on('endGame', () => {
     game = undefined
-})
-
-// set obstacle map
-socket.on('setMap', (backendMap) => {
-    obstacles = backendMap.obstacles
-    map = backendMap.dimensions
+    document.querySelector("#server").innerText = ""
+    document.querySelector("#owner").innerText = ""
+    if (document.querySelector("#menu").hasAttribute("style")) {
+        document.querySelector("#menu").removeAttribute("style")
+    }
 })
 
 // set types
@@ -316,14 +336,23 @@ socket.on('logEntry', (text) => {
 })
 
 // registered shot
-socket.on('shot', () => {
-    const snd = new Audio(`sounds/shots/${players[ego].type}.wav`)
-    snd.play().then()
+socket.on('shot', (origin) => {
+    const vol = (1000 - Math.sqrt(Math.pow(players[ego].x - origin.x, 2) + Math.pow(players[ego].y - origin.y, 2))) / 1000
+    if (vol > 0) {
+        const snd = new Audio(`sounds/shots/${origin.type}.wav`)
+        snd.volume = vol
+        snd.play().then()
+    }
 })
 
 // explosion
 socket.on('explosion', (explosion) => {
-    new Audio("sounds/explosion.wav").play().then()
+    const vol = (1000-Math.sqrt(Math.pow(players[ego].x - explosion.x, 2) + Math.pow(players[ego].y - explosion.y, 2)))/1000
+    if (vol > 0) {
+        const snd = new Audio("sounds/explosion.wav")
+        snd.volume = vol
+        snd.play().then()
+    }
     explosions.push({x: explosion.x, y: explosion.y, power: explosion.power, a: 1})
 })
 
@@ -360,6 +389,34 @@ socket.on('kill', () => {
     snd.play().then()
 })
 
+// menu games updater
+socket.on('games', (games) => {
+    document.querySelector("#menuGames").innerHTML = ""
+    for (const id in games) {
+        const gameEl = document.createElement('div')
+        gameEl.classList.add('gameEl')
+        gameEl.onclick = function () {socket.emit('requestGame', id)}
+        const gameName = document.createElement('p')
+        gameName.innerText = games[id].name
+        gameEl.appendChild(gameName)
+        const gamePlayer = document.createElement('p')
+        gamePlayer.innerText = String(Object.keys(games[id].players).length)
+        gameEl.appendChild(gamePlayer)
+        document.querySelector("#menuGames").appendChild(gameEl)
+    }
+    if (games.length < 4) {
+        const gameEl = document.createElement('div')
+        gameEl.classList.add('gameEl')
+        gameEl.onclick = function () {
+            socket.emit('requestGame', -1)
+        }
+        const gameName = document.createElement('p')
+        gameName.innerText = "Create Game"
+        gameEl.appendChild(gameName)
+        document.querySelector("#menuGames").appendChild(gameEl)
+    }
+})
+
 // new tps data
 socket.on('tps', (tps => {
     recentTPS.push(tps)
@@ -370,6 +427,10 @@ let animationId
 function animate() {
     animationId = requestAnimationFrame(animate)
     if (game === undefined) {
+        c.beginPath()
+        c.fillStyle = 'white'
+        c.fillRect(0, 0, canvas.width, canvas.height)
+        c.closePath()
         return
     }
     c.beginPath()
@@ -403,7 +464,7 @@ function animate() {
         c.arc(explosions[id].x*devicePxRat-cam.x, explosions[id].y*devicePxRat-cam.y, explosions[id].power*50*devicePxRat, 0, Math.PI*2, false)
         explosions[id].a -= 0.05
         if (explosions[id].a <= 0) {
-            explosions.splice(id, 1)
+            explosions.splice(Number(id), 1)
         }
     }
     c.fill()
@@ -448,7 +509,6 @@ function animate() {
     }
     const movement = {
         angle: mouseAngle,
-        name: ign,
         left: aPressed,
         right: dPressed,
         up: wPressed,
@@ -501,7 +561,7 @@ function animate() {
         const restMs= 1000-(Date.now() - dmgData.time)
         damages[id].a = restMs/1000
         if (restMs <= 0) {
-            damages.splice(id, 1)
+            damages.splice(Number(id), 1)
         }
     }
     c.closePath()
@@ -565,8 +625,6 @@ document.getElementById("termForm").onsubmit = function () {
     terminal.value = ""
 }
 
-// join game
-socket.emit('requestGame', 0)
 // call loops
 updateTPS().then()
 updateTable().then()
