@@ -38,7 +38,7 @@ const mapMod = require("./modules/map")
 
 // Game init
 const games = []
-createGame("FFA", undefined)
+createGame("Public", undefined, 1)
 
 // backend objects
 const allSocks = {}
@@ -128,16 +128,17 @@ const types = {
 }
 
 // create game
-function createGame(description, owner) {
+function createGame(description, owner, mode) {
     games.push({
         name: description,
         owner: owner,
-        mode: 0,
+        mode: mode,
         players: {},
         names: {},
         admins: [],
         projectiles: [],
         items: [],
+        running: true,
         map: mapMod.getMap(0)
     })
     return games.length-1
@@ -186,7 +187,7 @@ function explosion(gameId, x, y, power, attacker) {
 
 // player damage
 function dmgPlayer(gameId, target, dmg, attacker, venom, isCrit) {
-    if (dmg <= 0) {
+    if (dmg <= 0 || games[gameId].players[target].lessDmg === 0) {
         return
     }
     if (isCrit) {
@@ -331,25 +332,42 @@ function getNiceCords(game, radius) {
 }
 
 // leave game
-function leaveGame(socket) {
-    for (const id in games[allSocks[socket.id].game].projectiles) {
-        if (games[allSocks[socket.id].game].projectiles[id].shooter === socket.id) {
-            games[allSocks[socket.id].game].projectiles.splice(Number(id), 1)
+function leaveGame(target) {
+    if (games[allSocks[target].game] !== undefined) {
+        for (const id in games[allSocks[target].game].projectiles) {
+            if (games[allSocks[target].game].projectiles[id].shooter === target) {
+                games[allSocks[target].game].projectiles.splice(Number(id), 1)
+            }
+        }
+        delete games[allSocks[target].game].players[target]
+        if (Object.keys(games[allSocks[target].game].players).length === 0 && Number(allSocks[target].game) !== 0) {
+            // game empty and deleted
+            games.splice(Number(allSocks[target].game), 1)
+            console.log("Deleted game " + allSocks[target].game)
         }
     }
-    delete games[allSocks[socket.id].game].players[socket.id]
-    socket.leave('Game'+allSocks[socket.id].game)
-    if (Object.keys(games[allSocks[socket.id].game].players).length === 0 && Number(allSocks[socket.id].game) !== 0) {
-        // game empty and deleted
-        games.splice(Number(allSocks[socket.id].game), 1)
-        console.log("Deleted game " + allSocks[socket.id].game)
+    allSocks[target].game = undefined
+    if (!allSocks[target].sebi) {
+        io.to(target).emit('noAdmin')
     }
-    if (games[allSocks[socket.id].game] !== undefined) {
-        io.to('Game' + allSocks[socket.id].game).emit('logEntry', allSocks[socket.id].name + " left the game")
-        io.to('Game' + allSocks[socket.id].game).emit('updatePlayers', games[allSocks[socket.id].game].players)
+    io.in(target).socketsLeave('Game'+allSocks[target].game)
+    if (games[allSocks[target].game] !== undefined) {
+        io.to('Game' + allSocks[target].game).emit('logEntry', allSocks[target].name + " left the game")
+        io.to('Game' + allSocks[target].game).emit('updatePlayers', games[allSocks[target].game].players)
     }
-    socket.join("menu")
-    socket.emit('games', games)
+    io.in(target).socketsJoin("menu")
+    io.to(target).emit('games', games)
+}
+
+// endGame by target
+async function endGame(gameId) {
+    games[gameId].running = false
+    setTimeout(function () {
+        io.to('Game'+gameId).emit('endGame')
+        for (const id in games[gameId].players) {
+            leaveGame(id)
+        }
+    }, 5000)
 }
 
 // initialize connection to socket
@@ -403,7 +421,7 @@ io.on('connection', (socket) => {
                 games[gameId].players[socket.id].vel.y = 0
             }
             games[gameId].players[socket.id].angle = movement.angle
-        } catch (e) {console.log(e)}
+        } catch (e) {}
     })
 
     socket.on('shoot', (angle) => {
@@ -817,6 +835,48 @@ io.on('connection', (socket) => {
                     socket.emit('logEntry', "You healed " + allSocks[target].name + "!")
                     break
                 }
+                case "kick": {
+                    let target
+                    if (args.length > 1 && args[1] !== "") {
+                        if (names[args[1]] === undefined) {
+                            socket.emit('logEntry', `${args[1]} is not a player in this game!`)
+                            break
+                        } else {
+                            target = names[args[1]]
+                        }
+                    } else {
+                        target = socket.id
+                    }
+                    if (games[gameId].players[target].sebi && !games[gameId].players[socket.id].sebi) {
+                        socket.emit('logEntry', `Don't disturb Sebi!`)
+                        break
+                    }
+                    io.to(target).emit('endGame')
+                    leaveGame(target)
+                    socket.emit('logEntry', "You kicked " + allSocks[target].name + "!")
+                    break
+                }
+                case "kill": {
+                    let target
+                    if (args.length > 1 && args[1] !== "") {
+                        if (names[args[1]] === undefined) {
+                            socket.emit('logEntry', `${args[1]} is not a player in this game!`)
+                            break
+                        } else {
+                            target = names[args[1]]
+                        }
+                    } else {
+                        target = socket.id
+                    }
+                    if (games[gameId].players[target].sebi && !games[gameId].players[socket.id].sebi) {
+                        socket.emit('logEntry', `Don't disturb Sebi!`)
+                        break
+                    }
+                    dmgPlayer(gameId, target, (games[gameId].players[target].health+games[gameId].players[target].shield), socket.id, false, false)
+                    io.to('Game'+gameId).emit('updatePlayers', games[gameId].players)
+                    socket.emit('logEntry', "You killed " + allSocks[target].name + "!")
+                    break
+                }
                 default: {
                     socket.emit('logEntry', "This is not a valid command!")
                 }
@@ -827,17 +887,15 @@ io.on('connection', (socket) => {
 
     socket.on('leaveGame', () => {
         socket.emit('endGame')
-        setTimeout(function () {
-            leaveGame(socket)
-        }, 500)
+        leaveGame(socket.id)
     })
 
     socket.on('requestGame', (gameId) => {
         if (allSocks[socket.id].name === null || allSocks[socket.id].name === undefined) {
             return;
         }
-        if (gameId === -1 && games.length < 4) {
-            gameId = createGame(allSocks[socket.id].name + "'s Game", socket.id)
+        if (gameId < 0 && gameId > -3 && gameId === Math.round(gameId) && games.length < 4) {
+            gameId = createGame(allSocks[socket.id].name + "'s Game", socket.id, gameId*-1)
         }
         if (games[gameId] === undefined) {
             return
@@ -845,13 +903,10 @@ io.on('connection', (socket) => {
         if (allSocks[socket.id].game !== undefined) {
             if (games[allSocks[socket.id].game] !== undefined) {
                 // leave previous game
-                leaveGame(socket)
+                leaveGame(socket.id)
             }
         }
         allSocks[socket.id].game = gameId
-        if (!allSocks[socket.id].sebi) {
-            io.to(socket.id).emit('noAdmin')
-        }
         if (gameId === null) {
             return;
         }
@@ -890,10 +945,11 @@ io.on('connection', (socket) => {
         if (games[gameId].players[socket.id].admin) {
             socket.emit('gotAdmin')
         }
-        socket.emit('setGame', games[gameId])
         socket.leave("menu")
         socket.join('Game' + gameId)
+        socket.emit('setGame', games[gameId])
         io.to('menu').emit('games', games)
+        socket.emit('updateItems', games[gameId].items)
         io.to('Game'+gameId).emit('logEntry', allSocks[socket.id].name + " joined the game")
         io.to('Game'+gameId).emit('updatePlayers', games[gameId].players)
     })
@@ -902,7 +958,7 @@ io.on('connection', (socket) => {
         console.log(reason)
         delete names[allSocks[socket.id].name]
         if (allSocks[socket.id].game !== undefined) {
-            leaveGame(socket)
+            leaveGame(socket.id)
         }
         delete allSocks[socket.id]
     })
@@ -910,6 +966,9 @@ io.on('connection', (socket) => {
 
 function update() {
     for (const gameId in games) {
+        if (!games[gameId].running) {
+            continue
+        }
         for (const id in games[gameId].admins) {
             if (games[gameId].players[games[gameId].admins[id]] === undefined || !games[gameId].players[games[gameId].admins[id]].admin) {
                 delete games[gameId].admins[id]
@@ -953,6 +1012,11 @@ function update() {
         for (const id in games[gameId].players) {
             if (games[gameId].players[id].x === undefined || games[gameId].players[id].y === undefined) {
                 continue
+            }
+
+            if (games[gameId].mode === 2 && games[gameId].players[id].kills >= 40) {
+                io.to('Game'+gameId).emit('title', games[gameId].players[id].name+" won the game! <i class='bx bx-crown'></i>")
+                endGame(gameId).then()
             }
 
             let obstacleX = false

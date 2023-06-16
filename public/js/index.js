@@ -76,6 +76,10 @@ let curCmd = 0
 
 // shooting type names
 let types = {}
+const modes = {
+    1: "FFA",
+    2: "Deathmatch"
+}
 
 // helper function for fps/tps -> calculates average number of array
 function avg(array) {
@@ -336,6 +340,17 @@ socket.on('logEntry', (text) => {
     }, 7500)
 })
 
+// show title on screen
+socket.on('title', (text) => {
+    let newLog = document.createElement("h1")
+    newLog.innerHTML = text
+    newLog.setAttribute("style", "position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 4rem; color: white;")
+    document.getElementsByTagName('body')[0].appendChild(newLog)
+    setTimeout(function () {
+        newLog.remove()
+    }, 5000)
+})
+
 // registered shot
 socket.on('shot', (origin) => {
     const vol = (1000 - Math.sqrt(Math.pow(players[ego].x - origin.x, 2) + Math.pow(players[ego].y - origin.y, 2))) / 1000
@@ -400,20 +415,12 @@ socket.on('games', (games) => {
         const gameName = document.createElement('p')
         gameName.innerText = games[id].name
         gameEl.appendChild(gameName)
+        const gameMode = document.createElement('p')
+        gameMode.innerText = String(modes[games[id].mode])
+        gameEl.appendChild(gameMode)
         const gamePlayer = document.createElement('p')
         gamePlayer.innerText = String(Object.keys(games[id].players).length)
         gameEl.appendChild(gamePlayer)
-        document.querySelector("#menuGames").appendChild(gameEl)
-    }
-    if (games.length < 4) {
-        const gameEl = document.createElement('div')
-        gameEl.classList.add('gameEl')
-        gameEl.onclick = function () {
-            socket.emit('requestGame', -1)
-        }
-        const gameName = document.createElement('p')
-        gameName.innerText = "Create Game"
-        gameEl.appendChild(gameName)
         document.querySelector("#menuGames").appendChild(gameEl)
     }
 })
@@ -455,12 +462,18 @@ function animate() {
     c.stroke()
     for (const id in obstacles) {
         const obst = obstacles[id]
+        if (Math.sqrt(Math.pow(obst.start.x - players[ego].x, 2) + Math.pow(obst.start.y - players[ego].y, 2)) > 1600) {
+            continue
+        }
         c.fillStyle = `rgba(50, 50, 50, 1)`
         c.fillRect(obst.start.x*devicePxRat-cam.x, obst.start.y*devicePxRat-cam.y, obst.end.x*devicePxRat, obst.end.y*devicePxRat)
     }
     c.closePath()
     c.beginPath()
     for (const id in explosions) {
+        if (Math.sqrt(Math.pow(explosions[id].x - players[ego].x, 2) + Math.pow(explosions[id].y - players[ego].y, 2)) > 1000) {
+            continue
+        }
         c.fillStyle = `rgba(150, 75, 25, ${explosions[id].a})`
         c.arc(explosions[id].x*devicePxRat-cam.x, explosions[id].y*devicePxRat-cam.y, explosions[id].power*50*devicePxRat, 0, Math.PI*2, false)
         explosions[id].a -= 0.05
@@ -522,8 +535,12 @@ function animate() {
         socket.emit('movement', movement)
     }
 
+    const start = Date.now()
     for (const id in items) {
         const item = items[id]
+        if (Math.sqrt(Math.pow(item.x - players[ego].x, 2) + Math.pow(item.y - players[ego].y, 2)) > 1000) {
+            continue
+        }
         let color
         if (item.type === 0) {
             color = "rgba(0, 255, 0, 0.5)"
@@ -540,12 +557,16 @@ function animate() {
     }
     for (const id in projectiles) {
         const pr = projectiles[id]
-        pr.draw()
+        if (Math.sqrt(Math.pow(pr.x - players[ego].x, 2) + Math.pow(pr.y - players[ego].y, 2)) < 1000) {
+            pr.draw()
+        }
     }
 
     for (const id in players) {
         const p = players[id]
-        p.draw()
+        if (Math.sqrt(Math.pow(p.x - players[ego].x, 2) + Math.pow(p.y - players[ego].y, 2)) < 1000) {
+            p.draw()
+        }
     }
 
     c.beginPath()
@@ -568,6 +589,8 @@ function animate() {
         }
     }
     c.closePath()
+    const endT = Date.now()
+    document.querySelector('#tabTime').innerText = (endT-start)+"ms"
 
     const end = Date.now();
     recentFPS.push(Math.round(1000 / (end - lastUpdateTime)))
