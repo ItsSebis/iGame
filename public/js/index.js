@@ -42,6 +42,7 @@ let mousePos = {
     x: 0,
     y: 0
 }
+let preMove
 let aPressed = false
 let dPressed = false
 let wPressed = false
@@ -517,7 +518,9 @@ function animate() {
     if (mousedown) {
         socket.emit('shoot', mouseAngle)
     }
-    socket.emit('movement', movement)
+    if (preMove === undefined || movement !== preMove) {
+        socket.emit('movement', movement)
+    }
 
     for (const id in items) {
         const item = items[id]

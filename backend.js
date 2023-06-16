@@ -382,26 +382,28 @@ io.on('connection', (socket) => {
         if (allSocks[socket.id].game === undefined || allSocks[socket.id].name === null) {
             return;
         }
-        const gameId = allSocks[socket.id].game
-        if (movement.left ^ movement.right) {
-            if (movement.left) {
-                games[gameId].players[socket.id].vel.x = -1*speed*games[gameId].players[socket.id].speedFactor
+        try {
+            const gameId = allSocks[socket.id].game
+            if (movement.left ^ movement.right) {
+                if (movement.left) {
+                    games[gameId].players[socket.id].vel.x = -1*speed*games[gameId].players[socket.id].speedFactor
+                } else {
+                    games[gameId].players[socket.id].vel.x = speed*games[gameId].players[socket.id].speedFactor
+                }
             } else {
-                games[gameId].players[socket.id].vel.x = speed*games[gameId].players[socket.id].speedFactor
+                games[gameId].players[socket.id].vel.x = 0
             }
-        } else {
-            games[gameId].players[socket.id].vel.x = 0
-        }
-        if (movement.up ^ movement.down) {
-            if (movement.up) {
-                games[gameId].players[socket.id].vel.y = -1*speed*games[gameId].players[socket.id].speedFactor
+            if (movement.up ^ movement.down) {
+                if (movement.up) {
+                    games[gameId].players[socket.id].vel.y = -1*speed*games[gameId].players[socket.id].speedFactor
+                } else {
+                    games[gameId].players[socket.id].vel.y = speed*games[gameId].players[socket.id].speedFactor
+                }
             } else {
-                games[gameId].players[socket.id].vel.y = speed*games[gameId].players[socket.id].speedFactor
+                games[gameId].players[socket.id].vel.y = 0
             }
-        } else {
-            games[gameId].players[socket.id].vel.y = 0
-        }
-        games[gameId].players[socket.id].angle = movement.angle
+            games[gameId].players[socket.id].angle = movement.angle
+        } catch (e) {console.log(e)}
     })
 
     socket.on('shoot', (angle) => {
@@ -835,7 +837,7 @@ io.on('connection', (socket) => {
             return;
         }
         if (gameId === -1 && games.length < 4) {
-            gameId = createGame("Game of " + allSocks[socket.id].name, socket.id)
+            gameId = createGame(allSocks[socket.id].name + "'s Game", socket.id)
         }
         if (games[gameId] === undefined) {
             return
@@ -890,7 +892,8 @@ io.on('connection', (socket) => {
         }
         socket.emit('setGame', games[gameId])
         socket.leave("menu")
-        socket.join('Game'+gameId)
+        socket.join('Game' + gameId)
+        io.to('menu').emit('games', games)
         io.to('Game'+gameId).emit('logEntry', allSocks[socket.id].name + " joined the game")
         io.to('Game'+gameId).emit('updatePlayers', games[gameId].players)
     })
@@ -1047,8 +1050,8 @@ function update() {
                 y: cords.y,
                 type: Math.floor(3 * Math.random())
             })
+            io.to('Game' + gameId).emit('updateItems', games[gameId].items)
         }
-        io.to('Game'+gameId).emit('updateItems', games[gameId].items)
         io.to('Game'+gameId).emit('updateProj', games[gameId].projectiles)
         io.to('Game'+gameId).emit('updateCords', games[gameId].players)
 
