@@ -425,6 +425,7 @@ io.on('connection', (socket) => {
     })
 
     socket.on('shoot', (angle) => {
+        // player shooting
         if (allSocks[socket.id].game === undefined) {
             return;
         }
