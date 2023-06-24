@@ -436,6 +436,7 @@ io.on('connection', (socket) => {
             cooldown = games[gameId].players[socket.id].cooldown
         }
         if (Date.now()-games[gameId].players[socket.id].lastShootTime >= cooldown) {
+            // cooldown done
             for (let i = 0; i < type.amount; i++) {
                 let shotError = Math.random()*type.error-type.error/2
                 if (!games[gameId].players[socket.id].shootError) {
