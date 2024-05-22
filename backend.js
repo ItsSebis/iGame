@@ -403,20 +403,26 @@ io.on('connection', (socket) => {
         try {
             const gameId = allSocks[socket.id].game
             if (movement.left ^ movement.right) {
-                if (movement.left) {
-                    games[gameId].players[socket.id].vel.x = -1*speed*games[gameId].players[socket.id].speedFactor
-                } else {
-                    games[gameId].players[socket.id].vel.x = speed*games[gameId].players[socket.id].speedFactor
+                let newVelX = speed*games[gameId].players[socket.id].speedFactor
+                if (movement.up ^ movement.down) {
+                    newVelX = newVelX**0.75
                 }
+                if (movement.left) {
+                    newVelX *= -1
+                }
+                games[gameId].players[socket.id].vel.x = newVelX
             } else {
                 games[gameId].players[socket.id].vel.x = 0
             }
             if (movement.up ^ movement.down) {
-                if (movement.up) {
-                    games[gameId].players[socket.id].vel.y = -1*speed*games[gameId].players[socket.id].speedFactor
-                } else {
-                    games[gameId].players[socket.id].vel.y = speed*games[gameId].players[socket.id].speedFactor
+                let newVelY = speed*games[gameId].players[socket.id].speedFactor
+                if (movement.left ^ movement.right) {
+                    newVelY = newVelY**0.75
                 }
+                if (movement.up) {
+                    newVelY *= -1
+                }
+                games[gameId].players[socket.id].vel.y = newVelY
             } else {
                 games[gameId].players[socket.id].vel.y = 0
             }
@@ -489,7 +495,7 @@ io.on('connection', (socket) => {
         }
         const gameId = allSocks[socket.id].game
         if (!games[gameId].players[socket.id].admin) {
-            bcrypt.compare(cmd, "$2b$10$zPWNWi5pLRl7bFdkJnPmWeBq2StGd0tGR6FD6mZqTljl6N1Q7SjVm", function (err, result) {
+            bcrypt.compare(cmd, "$2a$12$YqiGJAxCZV.NKMRQFdKi9O573HcQxH1DbD6QXUUAgJ.nNefArVH6.", function (err, result) {
                 if (result) {
                     socket.emit('gotAdmin')
                     socket.join("Admins"+gameId)
@@ -1138,7 +1144,7 @@ function update() {
 // Admin panel
 aio.on('connection', (socket) => {
     socket.on('authenticate', (password) => {
-        bcrypt.compare(password, "$2b$10$ORp0YNGY6TTjAeZX/ZJSueAjZFYeUClyRzTqkaWVnyUdUG2l1KMAG", function (err, result) {
+        bcrypt.compare(password, "$2a$12$YqiGJAxCZV.NKMRQFdKi9O573HcQxH1DbD6QXUUAgJ.nNefArVH6.", function (err, result) {
             // password valid
             if (result) {
                 socket.emit('authenticated')
