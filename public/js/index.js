@@ -68,6 +68,7 @@ let items = []
 let obstacles = undefined
 let explosions = []
 let damages = []
+let gameMode = 1
 
 // terminal for testing and other fun stuff... will not be abused...
 let term = false
@@ -78,7 +79,7 @@ let curCmd = 0
 let types = {}
 const modes = {
     1: "FFA",
-    2: "Deathmatch"
+    2: "BattleRoyale"
 }
 
 // helper function for fps/tps -> calculates average number of array
@@ -117,7 +118,17 @@ function sortTable() {
             switching = true;
         }
     }
+    if (gameMode === 1) {
+        switchDeaths(rows)
+        switchKills(rows)
+    } else {
+        switchKills(rows)
+        switchDeaths(rows)
+    }
+}
 
+function switchDeaths(rows) {
+    let i, x, y, shouldSwitch, switching
     switching = true;
     while (switching) {
         switching = false;
@@ -142,7 +153,10 @@ function sortTable() {
             switching = true;
         }
     }
+}
 
+function switchKills(rows) {
+    let i, x, y, shouldSwitch, switching
     switching = true
     while (switching) {
         switching = false;
@@ -225,13 +239,18 @@ socket.on('updatePlayers', (backendPlayers) => {
 // new coordinate data
 socket.on('updateCords', (bCords) => {
     for (const id in players) {
+        if (bCords[id] === undefined) {
+            delete players[id]
+        }
         players[id].name = bCords[id].name
         players[id].x = bCords[id].x
         players[id].y = bCords[id].y
         players[id].angle = bCords[id].angle
     }
-    xEl.innerText = players[ego].x
-    yEl.innerText = players[ego].y
+    try {
+        xEl.innerText = players[ego].x
+        yEl.innerText = players[ego].y
+    } catch (e) {}
 })
 
 // new projectile data
@@ -271,6 +290,7 @@ socket.on('updateItems', (backendItems) => {
 // receive game
 socket.on('setGame', (backendGame) => {
     game = backendGame
+    gameMode = backendGame.mode
     if (game !== undefined) {
         obstacles = backendGame.map.obstacles
         map = backendGame.map.dimensions
@@ -304,6 +324,11 @@ socket.on('nameDefined', () => {
 // destroy game
 socket.on('endGame', () => {
     game = undefined
+    obstacles = undefined
+    items = undefined
+    for (const pl in players) {
+        delete players[pl]
+    }
     document.querySelector("#server").innerText = ""
     document.querySelector("#owner").innerText = ""
     if (document.querySelector("#menu").hasAttribute("style")) {
@@ -462,9 +487,11 @@ function animate() {
     c.stroke()
     for (const id in obstacles) {
         const obst = obstacles[id]
-        if (Math.sqrt(Math.pow(obst.start.x - players[ego].x, 2) + Math.pow(obst.start.y - players[ego].y, 2)) > 1600) {
-            continue
-        }
+        try {
+            if (Math.sqrt(Math.pow(obst.start.x - players[ego].x, 2) + Math.pow(obst.start.y - players[ego].y, 2)) > 1600) {
+                continue
+            }
+        } catch (e) {continue}
         c.fillStyle = `rgba(50, 50, 50, 1)`
         c.fillRect(obst.start.x*devicePxRat-cam.x, obst.start.y*devicePxRat-cam.y, obst.end.x*devicePxRat, obst.end.y*devicePxRat)
     }
@@ -484,10 +511,42 @@ function animate() {
     c.fill()
     c.closePath()
 
+    const movement = {
+        angle: mouseAngle,
+        left: aPressed,
+        right: dPressed,
+        up: wPressed,
+        down: sPressed
+    }
     try {
-        cam = {
-            x: players[ego].x * devicePxRat - innerWidth * devicePxRat / 2,
-            y: players[ego].y * devicePxRat - innerHeight * devicePxRat / 2
+        if (players[ego].health > 0) {
+            cam = {
+                x: players[ego].x * devicePxRat - innerWidth * devicePxRat / 2,
+                y: players[ego].y * devicePxRat - innerHeight * devicePxRat / 2
+            }
+        } else {
+            let yVel = 20
+            if (movement.up ^ movement.down) {
+                if (movement.up) {
+                    yVel *= -1
+                }
+            } else {
+                yVel = 0
+            }
+
+            let xVel = 20
+            if (movement.left ^ movement.right) {
+                if (movement.left) {
+                    xVel *= -1
+                }
+            } else {
+                xVel = 0
+            }
+
+            cam = {
+                x: cam.x+xVel,
+                y: cam.y+yVel
+            }
         }
         if (Date.now() - players[ego].lastHitTime < 10000) {
             for (const id in types) {
@@ -521,26 +580,23 @@ function animate() {
         document.querySelector("#terminal").removeAttribute("style")
         document.querySelector("#term").focus()
     }
-    const movement = {
-        angle: mouseAngle,
-        left: aPressed,
-        right: dPressed,
-        up: wPressed,
-        down: sPressed
-    }
-    if (mousedown) {
-        socket.emit('shoot', mouseAngle)
-    }
-    if (preMove === undefined || movement !== preMove) {
-        socket.emit('movement', movement)
+    if (players[ego].health > 0) {
+        if (mousedown) {
+            socket.emit('shoot', mouseAngle)
+        }
+        if (preMove === undefined || movement !== preMove) {
+            socket.emit('movement', movement)
+        }
     }
 
     const start = Date.now()
     for (const id in items) {
         const item = items[id]
-        if (Math.sqrt(Math.pow(item.x - players[ego].x, 2) + Math.pow(item.y - players[ego].y, 2)) > 1000) {
-            continue
-        }
+        try {
+            if (Math.sqrt(Math.pow(item.x - players[ego].x, 2) + Math.pow(item.y - players[ego].y, 2)) > 1000) {
+                continue
+            }
+        } catch (e) {continue}
         let color
         if (item.type === 0) {
             color = "rgba(0, 255, 0, 0.5)"

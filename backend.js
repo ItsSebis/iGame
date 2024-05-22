@@ -222,6 +222,9 @@ function dmgPlayer(gameId, target, dmg, attacker, venom, isCrit) {
     } else {
         games[gameId].players[target].health -= dmg
     }
+    if (games[gameId].players[target].health < 0) {
+        games[gameId].players[target].health = 0
+    }
     io.to('Game'+gameId).emit('damageDealt', {
         crit: isCrit,
         x: games[gameId].players[target].x,
@@ -253,12 +256,14 @@ function deadPlayer(gameId, dead) {
     }
     console.log(allSocks[dead].name + " player was killed by " + killerName)
     games[gameId].players[dead].deaths += 1
-    const cords = getNiceCords(gameId, 25)
-    games[gameId].players[dead].x = cords.x
-    games[gameId].players[dead].y = cords.y
-    games[gameId].players[dead].lastShootTime = 0
-    games[gameId].players[dead].health = 100
-    games[gameId].players[dead].shield = 0
+    if (games[gameId].mode !== 2) {
+        const cords = getNiceCords(gameId, 25)
+        games[gameId].players[dead].x = cords.x
+        games[gameId].players[dead].y = cords.y
+        games[gameId].players[dead].lastShootTime = 0
+        games[gameId].players[dead].health = 100
+        games[gameId].players[dead].shield = 0
+    }
     games[gameId].players[dead].lastDamager = undefined
     io.to('Game'+gameId).emit('logEntry', "<i class='bx bxs-skull' ></i> <span style='color: red'>" + allSocks[dead].name + "</span> (" + types[games[gameId].players[dead].type].name + ") " +
         "<i class='bx bx-chevrons-left' ></i> <span style='color: lime'>" + killerName + "</span> " + killerType)
@@ -402,7 +407,7 @@ io.on('connection', (socket) => {
         }
         try {
             const gameId = allSocks[socket.id].game
-            if (movement.left ^ movement.right) {
+            if (movement.left ^ movement.right && games[gameId].players[socket.id].health > 0) {
                 let newVelX = speed*games[gameId].players[socket.id].speedFactor
                 if (movement.up ^ movement.down) {
                     newVelX = newVelX**0.75
@@ -414,7 +419,7 @@ io.on('connection', (socket) => {
             } else {
                 games[gameId].players[socket.id].vel.x = 0
             }
-            if (movement.up ^ movement.down) {
+            if (movement.up ^ movement.down && games[gameId].players[socket.id].health > 0) {
                 let newVelY = speed*games[gameId].players[socket.id].speedFactor
                 if (movement.left ^ movement.right) {
                     newVelY = newVelY**0.75
@@ -426,7 +431,9 @@ io.on('connection', (socket) => {
             } else {
                 games[gameId].players[socket.id].vel.y = 0
             }
-            games[gameId].players[socket.id].angle = movement.angle
+            if (games[gameId].players[socket.id].health > 0) {
+                games[gameId].players[socket.id].angle = movement.angle
+            }
         } catch (e) {}
     })
 
@@ -1064,7 +1071,7 @@ function update() {
 
             for (const pid in games[gameId].projectiles) {
                 const proj = games[gameId].projectiles[pid]
-                if (proj.shooter === id || games[gameId].players[id].god) {
+                if (proj.shooter === id || games[gameId].players[id].god || games[gameId].players[id].health <= 0) {
                     continue
                 }
                 const dist = Math.hypot(proj.x - games[gameId].players[id].x, proj.y - games[gameId].players[id].y)
@@ -1129,7 +1136,7 @@ function update() {
 
         io.to("Admins"+gameId).emit('admins', Object.values(games[gameId].admins))
 
-        aio.to('adminRoom').emit('updateGames', games)
+        aio.to('adminRoom').emit('updateGames', games[0])
     }
 
     const end = Date.now();

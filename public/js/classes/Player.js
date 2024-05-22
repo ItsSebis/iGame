@@ -26,8 +26,14 @@ class Player {
         c.stroke()
         c.closePath()
         c.beginPath()
+        if (this.health < 0) {
+            this.radius *= 0.75
+        }
         c.arc(this.x*devicePxRat-cam.x, this.y*devicePxRat-cam.y, this.radius, -1 * Math.PI, Math.PI, false)
-        c.fillStyle = this.color
+        c.fillStyle = 'darkgrey'
+        if (this.health > 0) {
+            c.fillStyle = this.color
+        }
         c.fill()
         c.closePath()
         if (this.id !== ego) {
@@ -38,11 +44,13 @@ class Player {
             c.textAlign = 'center'
             c.font = (24*devicePxRat)+'px Arial'
             c.fillText(this.name, this.x*devicePxRat-cam.x, (this.y)*devicePxRat+this.radius*2-cam.y)
-            c.fillStyle = 'lightgray'
-            c.font = (16*devicePxRat)+'px Arial'
-            c.fillText(types[this.type].name, this.x*devicePxRat-cam.x, (this.y)*devicePxRat+this.radius*2+(18*devicePxRat)-cam.y)
-            c.fillStyle = 'lime'
-            c.fillText(this.health + " | " + this.shield, this.x*devicePxRat-cam.x, (this.y)*devicePxRat+this.radius*2+(24*devicePxRat)+(16*devicePxRat)-cam.y)
+            if (this.health > 0) {
+                c.fillStyle = 'lightgray'
+                c.font = (16 * devicePxRat) + 'px Arial'
+                c.fillText(types[this.type].name, this.x * devicePxRat - cam.x, (this.y) * devicePxRat + this.radius * 2 + (18 * devicePxRat) - cam.y)
+                c.fillStyle = 'lime'
+                c.fillText(this.health + " | " + this.shield, this.x * devicePxRat - cam.x, (this.y) * devicePxRat + this.radius * 2 + (24 * devicePxRat) + (16 * devicePxRat) - cam.y)
+            }
         }
     }
 }
