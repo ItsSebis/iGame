@@ -129,6 +129,10 @@ const types = {
 
 // create game
 function createGame(description, owner, mode) {
+    let running = true
+    if (mode === 2) {
+        running = false
+    }
     games.push({
         name: description,
         owner: owner,
@@ -138,7 +142,7 @@ function createGame(description, owner, mode) {
         admins: [],
         projectiles: [],
         items: [],
-        running: true,
+        running: running,
         map: mapMod.getMap(0)
     })
     return games.length-1
@@ -394,7 +398,14 @@ io.on('connection', (socket) => {
             names[name] = socket.id
             socket.emit('nameDefined')
             socket.join("menu")
-            socket.emit('games', games)
+            const listGames = []
+            for (const game of games) {
+                console.log(!game.running || game.mode !== 2)
+                if (!game.running || game.mode !== 2) {
+                    listGames.push(game)
+                }
+            }
+            socket.emit('games', listGames)
         } else {
             socket.emit('nameRejected')
         }
@@ -439,7 +450,11 @@ io.on('connection', (socket) => {
 
     socket.on('shoot', (angle) => {
         // player shooting
-        if (allSocks[socket.id].game === undefined) {
+        if (allSocks[socket.id].game === undefined || games[allSocks[socket.id].game] === undefined) {
+            socket.emit('endGame')
+            return;
+        }
+        if (!games[allSocks[socket.id].game].running) {
             return;
         }
         const gameId = allSocks[socket.id].game
@@ -490,6 +505,9 @@ io.on('connection', (socket) => {
             return;
         }
         const gameId = allSocks[socket.id].game
+        if (games[gameId].players[socket.id].health <= 0) {
+            return;
+        }
         if (types[type] !== undefined && (Date.now() - games[gameId].players[socket.id].lastHitTime > 10000 || games[gameId].players[socket.id].swapInst)) {
             games[gameId].players[socket.id].type = type
             io.to('Game'+gameId).emit('updatePlayers', games[gameId].players)
@@ -717,7 +735,7 @@ io.on('connection', (socket) => {
                         break
                     }
                     games[gameId].players[target].shootError = !games[gameId].players[target].shootError
-                    socket.emit('logEntry', "Shooting error for " + allSocks[target].name + " is now: " + games[gameId].players[target].ghost + "!")
+                    socket.emit('logEntry', "Shooting error for " + allSocks[target].name + " is now: " + games[gameId].players[target].shootError + "!")
                     break
                 }
                 case "god": {
@@ -915,6 +933,9 @@ io.on('connection', (socket) => {
         if (games[gameId] === undefined) {
             return
         }
+        if (games[gameId].mode !== undefined && games[gameId].mode === 2 && games[gameId].running) {
+            return;
+        }
         if (allSocks[socket.id].game !== undefined) {
             if (games[allSocks[socket.id].game] !== undefined) {
                 // leave previous game
@@ -963,10 +984,39 @@ io.on('connection', (socket) => {
         socket.leave("menu")
         socket.join('Game' + gameId)
         socket.emit('setGame', games[gameId])
-        io.to('menu').emit('games', games)
+        const listGames = []
+        for (const game of games) {
+            console.log(!game.running || game.mode !== 2)
+            if (!game.running || game.mode !== 2) {
+                listGames.push(game)
+            }
+        }
+        io.to('menu').emit('games', listGames)
         socket.emit('updateItems', games[gameId].items)
         io.to('Game'+gameId).emit('logEntry', allSocks[socket.id].name + " joined the game")
         io.to('Game'+gameId).emit('updatePlayers', games[gameId].players)
+    })
+
+    socket.on('startGame', () => {
+        if (
+            allSocks[socket.id].game === undefined                          ||
+            games[allSocks[socket.id].game] === undefined                   ||
+            !games[allSocks[socket.id].game].players[socket.id].admin       ||
+            games[allSocks[socket.id].game].mode !== 2   ||
+            games[allSocks[socket.id].game].running
+        ) {
+            console.log(allSocks[socket.id].game)
+            console.log(games[allSocks[socket.id].game])
+            console.log(games[allSocks[socket.id].game].players[socket.id])
+            console.log(games[allSocks[socket.id].game].mode)
+            console.log(games[allSocks[socket.id].game].running)
+            console.log("Cancel start")
+            return
+        }
+
+        const gameId = allSocks[socket.id].game
+        games[gameId].running = true
+        console.log("Starting game " + gameId)
     })
 
     socket.on('disconnect', (reason) => {

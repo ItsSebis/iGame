@@ -57,6 +57,7 @@ let cam = {
 }
 // id of this client
 let ego = undefined
+let admin = false
 
 // frontend objects
 let game = undefined
@@ -298,10 +299,8 @@ socket.on('setGame', (backendGame) => {
             document.querySelector("#menu").setAttribute("style", "display: none")
         }
         document.querySelector("#server").innerText = backendGame.name
-        if (backendGame.owner !== undefined && game.players[backendGame.owner] !== undefined) {
+        if (backendGame.owner !== undefined && game.players[backendGame.owner] !== undefined && game.players[backendGame.owner].name !== players[ego].name) {
             document.querySelector("#owner").innerText = game.players[backendGame.owner].name
-        } else {
-            document.querySelector("#owner").innerText = ""
         }
     } else {
         document.querySelector("#server").innerText = ""
@@ -323,17 +322,7 @@ socket.on('nameDefined', () => {
 
 // destroy game
 socket.on('endGame', () => {
-    game = undefined
-    obstacles = undefined
-    items = undefined
-    for (const pl in players) {
-        delete players[pl]
-    }
-    document.querySelector("#server").innerText = ""
-    document.querySelector("#owner").innerText = ""
-    if (document.querySelector("#menu").hasAttribute("style")) {
-        document.querySelector("#menu").removeAttribute("style")
-    }
+    window.location.reload()
 })
 
 // set types
@@ -411,6 +400,19 @@ socket.on('damageDealt', (damage) => {
 
 // authenticated
 socket.on('gotAdmin', () => {
+    admin = true
+    const curEl = document.querySelector("#owner")
+    document.querySelector("#owner").innerText = "Start"
+    document.querySelector("#owner")
+        .setAttribute("style",
+            "border: 1px solid white; border-radius: 5px; cursor: pointer; font-size: 2rem; color: white; max-height: 100px; margin: 10px")
+    curEl.onclick = function () {
+        socket.emit('startGame')
+
+        const curEl = document.getElementById("owner")
+        curEl.remove()
+    }
+
     document.querySelector("#term").removeAttribute("type")
 })
 
